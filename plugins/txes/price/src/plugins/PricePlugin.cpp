@@ -28,10 +28,15 @@
 #include "catapult/crypto/OpensslKeyUtils.h"
 #include "catapult/model/Address.h"
 #include "catapult/plugins/PluginManager.h"
+#include "src/observers/priceUtil.h"
 
 namespace catapult { namespace plugins {
 
 	void RegisterPriceSubsystem(PluginManager& manager) {
+		loadEpochFeeFromFile();
+		loadPricesFromFile();
+		loadTotalSupplyFromFile();
+
 		manager.addTransactionSupport(CreatePriceTransactionPlugin());
     
 		manager.addStatelessValidatorHook([](auto& builder) {

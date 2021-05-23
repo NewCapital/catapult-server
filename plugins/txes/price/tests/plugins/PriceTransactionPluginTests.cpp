@@ -131,12 +131,10 @@ namespace catapult { namespace plugins {
 		AddCommonExpectations<TTraits>(builder, transaction);
 		builder.template addExpectation<PriceMessageNotification>([&transaction](const auto& notification) {
 			EXPECT_EQ(transaction.SignerPublicKey, notification.SenderPublicKey);
-
 			EXPECT_EQ(1u, notification.lowPrice);
 			EXPECT_EQ(2u, notification.highPrice);
 			EXPECT_EQ(transaction.lowPrice, 1u);
 			EXPECT_EQ(transaction.highPrice, 2u);
-
 		});
 
 		// Act + Assert:

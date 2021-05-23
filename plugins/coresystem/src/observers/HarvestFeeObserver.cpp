@@ -205,3 +205,4 @@ namespace catapult { namespace observers {
 		}));
 	}
 }}
+

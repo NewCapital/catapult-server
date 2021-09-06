@@ -87,7 +87,9 @@ namespace catapult { namespace observers {
 				catapult::plugins::loadEpochFeeFromFile();
 				catapult::plugins::loadPricesFromFile();
 				catapult::plugins::loadTotalSupplyFromFile();
-				catapult::plugins::totalSupply.push_front({0, 10000000000, 10000000000}); // initial supply
+				catapult::plugins::readConfig();
+				catapult::plugins::totalSupply.push_front({0, catapult::plugins::initialSupply, 
+					catapult::plugins::initialSupply});
 			}
 
 			Amount inflationAmount = Amount(0);

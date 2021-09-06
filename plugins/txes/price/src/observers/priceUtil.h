@@ -19,8 +19,27 @@ namespace catapult {
         extern double currentMultiplier;
         extern uint64_t feeToPay; // fee to pay this epoch
 
+        // initial supply of the network
+        extern uint64_t initialSupply;
+
+        // price publisher address string
+        extern std::string pricePublisherAddress;
+
+        // fee recalculation frequency
+        extern uint64_t feeRecalculationFrequency;
+
+        // multiplier recalculation frequency
+        extern uint64_t multiplierRecalculationFrequency;
+
+        // number of blocks to be included in calculating price averages (originally 30 days)
+        extern uint64_t pricePeriodBlocks;
+
+        extern std::string networkIdentifier;
+
         //region block_reward
 
+        void configToFile();
+        void readConfig();
         double approximate(double number);
         double getCoinGenerationMultiplier(uint64_t blockHeight, bool rollback = false);
         double getMultiplier(double increase30, double increase60, double increase90);

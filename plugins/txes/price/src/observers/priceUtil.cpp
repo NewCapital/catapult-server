@@ -13,16 +13,9 @@
 #include "src/catapult/io/FileBlockStorage.h"
 #include "src/catapult/model/Elements.h"
 
-// epoch = 6 hours -> 4 epochs per day; number of epochs in a year: 365 * 4 = 1460
-#define EPOCHS_PER_YEAR 1460
-#define BLOCKS_PER_30_DAYS 86400
 #define PRICE_DATA_SIZE 4
 #define SUPPLY_DATA_SIZE 3
 #define EPOCH_FEES_DATA_SIZE 4
-
-// TODO: move to config files
-#define FEE_RECALCULATION_FREQUENCY 10
-#define MULTIPLIER_RECALCULATION_FREQUENCY 5
 
 namespace catapult { namespace plugins {
 
@@ -32,8 +25,39 @@ namespace catapult { namespace plugins {
     double currentMultiplier = 1;
     uint64_t feeToPay = 0;
 
+    uint64_t initialSupply = 0;
+    std::string pricePublisherAddress = "";
+    uint64_t feeRecalculationFrequency = 0;
+    uint64_t multiplierRecalculationFrequency = 0;
+    uint64_t pricePeriodBlocks = 0;
+    std::string networkIdentifier = "";
 
     //region block_reward
+
+    void readConfig() {
+        std::string line;
+        std::ifstream fr("config.txt");
+        getline(fr, line);
+        initialSupply = stoul(line);
+        getline(fr, pricePublisherAddress);
+        getline(fr, line);
+        feeRecalculationFrequency = stoul(line);
+        getline(fr, line);
+        multiplierRecalculationFrequency = stoul(line);
+        getline(fr, line);
+        pricePeriodBlocks = stoul(line);
+        getline(fr, networkIdentifier);
+    }
+
+    void configToFile() {
+        std::ofstream fw("config.txt");
+        fw << initialSupply << "\n";
+        fw << pricePublisherAddress << "\n";
+        fw << feeRecalculationFrequency << "\n";
+        fw << multiplierRecalculationFrequency << "\n";
+        fw << pricePeriodBlocks << "\n";
+        fw << networkIdentifier << "\n";
+    }
 
     // leave up to 10 significant figures (max 5 decimal digits)
     double approximate(double number) {
@@ -54,7 +78,7 @@ namespace catapult { namespace plugins {
     }
 
     double getCoinGenerationMultiplier(uint64_t blockHeight, bool rollback) {
-        if (blockHeight % MULTIPLIER_RECALCULATION_FREQUENCY > 0 && currentMultiplier != 0 && !rollback) // recalculate only every 720 blocks
+        if (blockHeight % multiplierRecalculationFrequency > 0 && currentMultiplier != 0 && !rollback) // recalculate only every 720 blocks
             return currentMultiplier;
         else if (currentMultiplier == 0)
             currentMultiplier = 1;
@@ -81,6 +105,7 @@ namespace catapult { namespace plugins {
     }
 
     double getMultiplier(double increase30, double increase60, double increase90) {
+        uint64_t pricePeriodsPerYear = 1051200 / pricePeriodBlocks; // 1051200 - number of blocks in a year
         double min;
         increase30 = approximate(increase30);
         increase60 = approximate(increase60);
@@ -89,38 +114,38 @@ namespace catapult { namespace plugins {
             if (increase90 >= 1.25) {
                 min = getMin(increase30, increase60, increase90);
                 if (min >= 1.55)
-                    return approximate(1 + 0.735 / EPOCHS_PER_YEAR);
+                    return approximate(1 + 0.735 / (double)pricePeriodsPerYear);
                 else if (min >= 1.45)
-                    return approximate(1 + (0.67 + (min - 1.45) * 0.65) / EPOCHS_PER_YEAR);
+                    return approximate(1 + (0.67 + (min - 1.45) * 0.65) / (double)pricePeriodsPerYear);
                 else if (min >= 1.35)
-                    return approximate(1 + (0.61 + (min - 1.35) * 0.6) / EPOCHS_PER_YEAR);
+                    return approximate(1 + (0.61 + (min - 1.35) * 0.6) / (double)pricePeriodsPerYear);
                 else if (min >= 1.25)
-                    return approximate(1 + (0.55 + (min - 1.25) * 0.6) / EPOCHS_PER_YEAR);
+                    return approximate(1 + (0.55 + (min - 1.25) * 0.6) / (double)pricePeriodsPerYear);
             } else {
                 min = getMin(increase30, increase60);
                 if (min >= 1.55)
-                    return approximate(1 + 0.49 / EPOCHS_PER_YEAR);
+                    return approximate(1 + 0.49 / (double)pricePeriodsPerYear);
                 else if (min >= 1.45)
-                    return approximate(1 + (0.43 + (min - 1.45) * 0.6) / EPOCHS_PER_YEAR);
+                    return approximate(1 + (0.43 + (min - 1.45) * 0.6) / (double)pricePeriodsPerYear);
                 else if (min >= 1.35)
-                    return approximate(1 + (0.37 + (min - 1.35) * 0.6) / EPOCHS_PER_YEAR);
+                    return approximate(1 + (0.37 + (min - 1.35) * 0.6) / (double)pricePeriodsPerYear);
                 else if (min >= 1.25)
-                    return approximate(1 + (0.31 + (min - 1.25) * 0.6) / EPOCHS_PER_YEAR);
+                    return approximate(1 + (0.31 + (min - 1.25) * 0.6) / (double)pricePeriodsPerYear);
             }
         } else if (increase30 >= 1.05) {
             min = increase30;
             if (min >= 1.55)
-                return approximate(1 + 0.25 / EPOCHS_PER_YEAR);
+                return approximate(1 + 0.25 / (double)pricePeriodsPerYear);
             else if (min >= 1.45)
-                return approximate(1 + (0.19 + (min - 1.45) * 0.6) / EPOCHS_PER_YEAR);
+                return approximate(1 + (0.19 + (min - 1.45) * 0.6) / (double)pricePeriodsPerYear);
             else if (min >= 1.35)
-                return approximate(1 + (0.13 + (min - 1.35) * 0.6) / EPOCHS_PER_YEAR);
+                return approximate(1 + (0.13 + (min - 1.35) * 0.6) / (double)pricePeriodsPerYear);
             else if (min >= 1.25)
-                return approximate(1 + (0.095 + (min - 1.25) * 0.35) / EPOCHS_PER_YEAR);
+                return approximate(1 + (0.095 + (min - 1.25) * 0.35) / (double)pricePeriodsPerYear);
             else if (min >= 1.15)
-                return approximate(1 + (0.06 + (min - 1.15) * 0.35) / EPOCHS_PER_YEAR);
+                return approximate(1 + (0.06 + (min - 1.15) * 0.35) / (double)pricePeriodsPerYear);
             else if (min >= 1.05)
-                return approximate(1 + (0.025 + (min - 1.05) * 0.35) / EPOCHS_PER_YEAR);
+                return approximate(1 + (0.025 + (min - 1.05) * 0.35) / (double)pricePeriodsPerYear);
         }
         return 1;
     }
@@ -143,7 +168,7 @@ namespace catapult { namespace plugins {
 			}
             return feeToPay;
         }
-        if (blockHeight % FEE_RECALCULATION_FREQUENCY == 0) {
+        if (blockHeight % feeRecalculationFrequency == 0) {
             if (epochFees.size() == 0) {
                 feeToPay = 0;
                 return feeToPay;
@@ -154,7 +179,7 @@ namespace catapult { namespace plugins {
                     break;
                 }
             }
-            feeToPay = static_cast<unsigned int>((double)collectedEpochFees / FEE_RECALCULATION_FREQUENCY + 0.5);
+            feeToPay = static_cast<unsigned int>((double)collectedEpochFees / (double)feeRecalculationFrequency + 0.5);
         }
         return feeToPay;
     }
@@ -169,7 +194,7 @@ namespace catapult { namespace plugins {
         if (priceList.size() == 0)
             return;
         int count = 0;
-        uint64_t boundary = 300; // number of blocks equivalent to 30 days
+        uint64_t boundary = pricePeriodBlocks;
         double *averagePtr = &average30;
         std::deque<std::tuple<uint64_t, uint64_t, uint64_t, double>>::reverse_iterator it;
         // we also need to visit priceList.begin(), so we just break when we reach it
@@ -191,7 +216,7 @@ namespace catapult { namespace plugins {
                     break; // 120 days reached
                 }
                 count = 0;
-                boundary += 300;
+                boundary += pricePeriodBlocks;
                 if (blockHeight + 1u < boundary) // not enough blocks for the next 30 days
                     break;
             } else if (std::get<0>(*it) > blockHeight) {

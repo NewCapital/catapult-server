@@ -20,6 +20,7 @@
 **/
 
 #include "PriceConfiguration.h"
+#include "catapult/model/Address.h"
 #include "catapult/utils/ConfigurationBag.h"
 #include "catapult/utils/ConfigurationUtils.h"
 
@@ -31,8 +32,19 @@ namespace catapult { namespace config {
 
 	PriceConfiguration PriceConfiguration::LoadFromBag(const utils::ConfigurationBag& bag) {
 		PriceConfiguration config;
-		utils::LoadIniProperty(bag, "", "MaxMessageSize", config.MaxMessageSize);
-		utils::VerifyBagSizeExact(bag, 1);
+
+#define LOAD_PROPERTY(NAME) utils::LoadIniProperty(bag, "", #NAME, config.NAME)
+
+		LOAD_PROPERTY(initialSupply);
+		LOAD_PROPERTY(pricePublisherAddress);
+		LOAD_PROPERTY(feeRecalculationFrequency);
+		LOAD_PROPERTY(multiplierRecalculationFrequency);
+		LOAD_PROPERTY(pricePeriodBlocks);
+		LOAD_PROPERTY(networkIdentifier);
+
+#undef LOAD_PROPERTY
+
+		utils::VerifyBagSizeExact(bag, 6);
 		return config;
 	}
 }}

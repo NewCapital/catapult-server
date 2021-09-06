@@ -20,26 +20,36 @@
 **/
 
 #pragma once
-#include <stdint.h>
+#include "catapult/utils/BlockSpan.h"
+#include <unordered_set>
 
 namespace catapult { namespace utils { class ConfigurationBag; } }
 
 namespace catapult { namespace config {
 
-	/// Price plugin configuration settings.
+	/// Namespace plugin configuration settings.
 	struct PriceConfiguration {
 	public:
-		/// Maximum transaction message size.
-		uint16_t MaxMessageSize;
+		uint64_t initialSupply;
+
+		std::string pricePublisherAddress;
+
+		uint64_t feeRecalculationFrequency;
+
+		uint64_t multiplierRecalculationFrequency;
+
+		uint64_t pricePeriodBlocks;
+
+		std::string networkIdentifier;
 
 	private:
 		PriceConfiguration() = default;
 
 	public:
-		/// Creates an uninitialized price configuration.
+		/// Creates an uninitialized namespace configuration.
 		static PriceConfiguration Uninitialized();
 
-		/// Loads a price configuration from \a bag.
+		/// Loads a namespace configuration from \a bag.
 		static PriceConfiguration LoadFromBag(const utils::ConfigurationBag& bag);
 	};
 }}

@@ -29,7 +29,7 @@
 
 namespace catapult { namespace model {
 
-#define TEST_CLASS PriceTransactionTests
+//#define TEST_CLASS PriceTransactionTests
 
 	// region size + properties
 
@@ -60,7 +60,7 @@ namespace catapult { namespace model {
 
 #undef TRANSACTION_FIELDS
 
-	ADD_BASIC_TRANSACTION_PROPERTY_TESTS_WITH_ARGS(Price)
+	ADD_BASIC_TRANSACTION_PROPERTY_TESTS_WITH_ARGS(Price,)
 
 	TEST(PriceTransactionTests, TransactionHasExpectedSize) {
 		AssertTransactionHasExpectedSize<PriceTransaction>(sizeof(Transaction));

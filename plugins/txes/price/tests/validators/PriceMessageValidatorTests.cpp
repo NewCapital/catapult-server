@@ -27,7 +27,7 @@ namespace catapult { namespace validators {
 
 #define TEST_CLASS PriceMessageValidatorTests
 
-	DEFINE_COMMON_VALIDATOR_TESTS(PriceMessage)
+	DEFINE_COMMON_VALIDATOR_TESTS(PriceMessage,)
 
 	namespace {
 		void AssertValidationResult(ValidationResult expectedResult, uint64_t lowPrice, uint64_t highPrice) {

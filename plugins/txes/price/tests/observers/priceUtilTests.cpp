@@ -31,9 +31,9 @@
 // epoch = 6 hours -> 4 epochs per day; number of epochs in a year: 365 * 4 = 1460
 #define EPOCHS_PER_YEAR 1460
 #define INCREASE_TESTS_COUNT 41
-#define MOCK_PRICES_COUNT 14
-#define MOCK_TOTAL_SUPPLY_ENTRIES 4
-#define MOCK_EPOCH_FEE_ENTRIES 4
+#define MOCK_PRICES_COUNT 14u
+#define MOCK_TOTAL_SUPPLY_ENTRIES 4u
+#define MOCK_EPOCH_FEE_ENTRIES 4u
 #define TEST_CLASS SupplyDemandModel
 
 namespace catapult { namespace plugins {
@@ -151,7 +151,7 @@ namespace catapult { namespace plugins {
             {300u, 20, 5}
         };
 
-        std::tuple<uint64_t, uint64_t, uint64_t, std::string> mockEpochFees[MOCK_EPOCH_FEE_ENTRIES] = {
+        NODESTROY std::tuple<uint64_t, uint64_t, uint64_t, std::string> mockEpochFees[MOCK_EPOCH_FEE_ENTRIES] = {
             // Should be sorted by the blockHeight from the lowest (top) to the highest (bottom)
             // <blockHeight, fees collected this epoch, fee paid for a block>
             {0u, 5, 5, "address"},
@@ -218,7 +218,7 @@ namespace catapult { namespace plugins {
                 if (blockHeight > end || blockHeight < start)
                     continue;
                 
-                average += (double)(std::get<1>(mockPrices[i]) + std::get<2>(mockPrices[i])) / 2;
+                average += static_cast<double>(std::get<1>(mockPrices[i]) + std::get<2>(mockPrices[i])) / 2;
                 ++count;
             }
             return approximate(average / count);
@@ -229,22 +229,22 @@ namespace catapult { namespace plugins {
             if (highestBlock < BLOCKS_PER_30_DAYS - 1)
                 return;
             EXPECT_EQ(average30, getMockPriceAverage(highestBlock,
-                highestBlock - BLOCKS_PER_30_DAYS + 1u));
+                highestBlock - BLOCKS_PER_30_DAYS + 1));
 
             if (highestBlock < BLOCKS_PER_30_DAYS * 2 - 1)
                 return;
             EXPECT_EQ(average60, getMockPriceAverage(highestBlock - BLOCKS_PER_30_DAYS, 
-                highestBlock - BLOCKS_PER_30_DAYS * 2 + 1u));
+                highestBlock - BLOCKS_PER_30_DAYS * 2 + 1));
             
             if (highestBlock < BLOCKS_PER_30_DAYS * 3 - 1)
                 return;
             EXPECT_EQ(average90, getMockPriceAverage(highestBlock - BLOCKS_PER_30_DAYS * 2, 
-                highestBlock - BLOCKS_PER_30_DAYS * 3 + 1u));
+                highestBlock - BLOCKS_PER_30_DAYS * 3 + 1));
 
             if (highestBlock < BLOCKS_PER_30_DAYS * 4 - 1)
                 return;
             EXPECT_EQ(average120, getMockPriceAverage(highestBlock - BLOCKS_PER_30_DAYS * 3, 
-                highestBlock - BLOCKS_PER_30_DAYS * 4 + 1u));
+                highestBlock - BLOCKS_PER_30_DAYS * 4 + 1));
         }
 
         /*TEST(TEST_CLASS, CanRemoveOldPrices) {
@@ -511,7 +511,7 @@ namespace catapult { namespace plugins {
         TEST(TEST_CLASS, approximateTests) {
             double number = 12345678901.5123456789;
             // bigger than 10e10, so a rounded integer (in form of double) should be returned
-            EXPECT_EQ(12345678902, approximate(number));
+            EXPECT_EQ(12345678902.0, approximate(number));
 
             number = 12345678.123456789; // smaller than 10e10, so up to 10 significant figures (5 decimal places max)
             EXPECT_EQ(12345678.12, approximate(number));
@@ -536,7 +536,7 @@ namespace catapult { namespace plugins {
 
         TEST(TEST_CLASS, IgnoresFuturePricesForAverages) {
             resetTests();
-            int remainingPricesExpected = MOCK_PRICES_COUNT;
+            size_t remainingPricesExpected = MOCK_PRICES_COUNT;
             double average30, average60, average90, average120;
             uint64_t highestBlock = BLOCKS_PER_30_DAYS * 4 - 1u; // blocks: 0 - 345599
             generatePriceList();
@@ -547,7 +547,7 @@ namespace catapult { namespace plugins {
 
         TEST(TEST_CLASS, getAverageRemovesOldPrices) {
             resetTests();
-            int remainingPricesExpected = MOCK_PRICES_COUNT - 1;
+            size_t remainingPricesExpected = MOCK_PRICES_COUNT - 1;
             double average30, average60, average90, average120;
             // priceList keeps prices of 100 extra blocks in case of a rollback
             uint64_t highestBlock = BLOCKS_PER_30_DAYS * 4 + 100; // blocks: 101 - 345700
@@ -559,7 +559,7 @@ namespace catapult { namespace plugins {
 
         TEST(TEST_CLASS, CanGetCorrectAverages) {
             resetTests();
-            int remainingPricesExpected = MOCK_PRICES_COUNT; // no prices removed
+            size_t remainingPricesExpected = MOCK_PRICES_COUNT; // no prices removed
             double average30, average60, average90, average120;
             uint64_t highestBlock = BLOCKS_PER_30_DAYS * 4; // blocks: 1 - 345600
             generatePriceList();
@@ -570,7 +570,7 @@ namespace catapult { namespace plugins {
         
         TEST(TEST_CLASS, CanGetAveragesForFewerThan120MoreThan90Days) {
             resetTests();
-            int remainingPricesExpected = MOCK_PRICES_COUNT;
+            size_t remainingPricesExpected = MOCK_PRICES_COUNT;
             double average30, average60, average90, average120;
             uint64_t highestBlock = BLOCKS_PER_30_DAYS * 3; // blocks: 0 - 259200
             generatePriceList();
@@ -581,7 +581,7 @@ namespace catapult { namespace plugins {
 
         TEST(TEST_CLASS, CanGetAveragesForFewerThan90MoreThan60Days) {
             resetTests();
-            int remainingPricesExpected = MOCK_PRICES_COUNT;
+            size_t remainingPricesExpected = MOCK_PRICES_COUNT;
             double average30, average60, average90, average120;
             uint64_t highestBlock = BLOCKS_PER_30_DAYS * 2; // blocks: 0 - 172800
             generatePriceList();
@@ -592,7 +592,7 @@ namespace catapult { namespace plugins {
 
         TEST(TEST_CLASS, CanGetAveragesForFewerThan60MoreThan30Days) {
             resetTests();
-            int remainingPricesExpected = MOCK_PRICES_COUNT;
+            size_t remainingPricesExpected = MOCK_PRICES_COUNT;
             double average30, average60, average90, average120;
             uint64_t highestBlock = BLOCKS_PER_30_DAYS; // blocks: 0 - 86400
             generatePriceList();
@@ -603,7 +603,7 @@ namespace catapult { namespace plugins {
 
         TEST(TEST_CLASS, CanGetAveragesForFewerThan30Days) {
             resetTests();
-            int remainingPricesExpected = MOCK_PRICES_COUNT;
+            size_t remainingPricesExpected = MOCK_PRICES_COUNT;
             double average30, average60, average90, average120;
             uint64_t highestBlock = 1; // blocks: 0 - 1
             generatePriceList();
@@ -648,8 +648,8 @@ namespace catapult { namespace plugins {
 
             // Not enough blocks should reset the multiplier value to 1
             multiplier = getCoinGenerationMultiplier(BLOCKS_PER_30_DAYS * 1);
-            EXPECT_EQ(multiplier, 1);
-            EXPECT_EQ(currentMultiplier, 1);
+            EXPECT_EQ(multiplier, 1.0);
+            EXPECT_EQ(currentMultiplier, 1.0);
 
             // If it's not yet time (block isn't multiple of 720) to update the multiplier, it shouldn't change
             currentMultiplier = 1.5;
@@ -670,24 +670,24 @@ namespace catapult { namespace plugins {
         // getFeeToPay function should return the current value
         TEST(TEST_CLASS, getFeeToPayTest_NotUpdateBlock) {
             resetTests();
-            feeToPay = 10;
+            feeToPay = 10u;
             uint64_t fee = getFeeToPay(1);
-            EXPECT_EQ(fee, 10);
+            EXPECT_EQ(fee, 10u);
 	    }
 
         TEST(TEST_CLASS, getFeeToPayTest_UpdateBlock) {
             resetTests();
             epochFees.push_back({719, 720, 3, "address"});
             uint64_t fee = getFeeToPay(720);
-            EXPECT_EQ(fee, 1);
-            EXPECT_EQ(feeToPay, 1);
+            EXPECT_EQ(fee, 1u);
+            EXPECT_EQ(feeToPay, 1u);
 	    }
 
         TEST(TEST_CLASS, getFeeToPayTest_UpdateBlock_EmptyEpochFees) {
             resetTests();
             uint64_t fee = getFeeToPay(720);
-            EXPECT_EQ(fee, 0);
-            EXPECT_EQ(feeToPay, 0);
+            EXPECT_EQ(fee, 0u);
+            EXPECT_EQ(feeToPay, 0u);
 	    }
 
         TEST(TEST_CLASS, getFeeToPayTest_Rollback) {
@@ -695,11 +695,11 @@ namespace catapult { namespace plugins {
             epochFees.push_back({719, 1440, 3, "address"});
             epochFees.push_back({720, 0, 2, "address"});
             uint64_t fee = getFeeToPay(720, true);
-            EXPECT_EQ(fee, 2);
-            EXPECT_EQ(feeToPay, 2);
-            fee = getFeeToPay(719, true);
-            EXPECT_EQ(fee, 3);
-            EXPECT_EQ(feeToPay, 3);
+            EXPECT_EQ(fee, 2u);
+            EXPECT_EQ(feeToPay, 2u);
+            fee = getFeeToPay(719u, true);
+            EXPECT_EQ(fee, 3u);
+            EXPECT_EQ(feeToPay, 3u);
 	    }
 
         //endregion block_reward
@@ -708,28 +708,28 @@ namespace catapult { namespace plugins {
 
         TEST(TEST_CLASS, CanRemoveOldPrices) {
             resetTests();
-            int remainingPricesExpected = MOCK_PRICES_COUNT - 2;
+            size_t remainingPricesExpected = MOCK_PRICES_COUNT - 2;
             generatePriceList();
             removeOldPrices(4 * BLOCKS_PER_30_DAYS + 101); // blocks: 2 - 345601
             EXPECT_EQ(priceList.size(), remainingPricesExpected);
             std::deque<std::tuple<uint64_t, uint64_t, uint64_t, double>>::iterator it = priceList.begin();
-            for (int i = 2; i < remainingPricesExpected; ++i) {
+            for (size_t i = 2; i < remainingPricesExpected; ++i) {
                 comparePrice(*it++, mockPrices[i]);
             }
             removeOldPrices(8 * BLOCKS_PER_30_DAYS + 101); // remove all
-            EXPECT_EQ(priceList.size(), 0);
+            EXPECT_EQ(priceList.size(), 0u);
 	    }
 
         TEST(TEST_CLASS, CanAddPriceToPriceList) {
             resetTests();
-            int remainingPricesExpected = 1;
-            EXPECT_EQ(priceList.size(), 0);
+            size_t remainingPricesExpected = 1;
+            EXPECT_EQ(priceList.size(), 0u);
             addPrice(1u, 2u, 2u, 1);
             EXPECT_EQ(priceList.size(), remainingPricesExpected);
-            EXPECT_EQ(std::get<0>(priceList.front()), 1);
-            EXPECT_EQ(std::get<1>(priceList.front()), 2);
-            EXPECT_EQ(std::get<2>(priceList.front()), 2);
-            EXPECT_EQ(std::get<3>(priceList.front()), 1);
+            EXPECT_EQ(std::get<0>(priceList.front()), 1u);
+            EXPECT_EQ(std::get<1>(priceList.front()), 2u);
+            EXPECT_EQ(std::get<2>(priceList.front()), 2u);
+            EXPECT_EQ(std::get<3>(priceList.front()), 1u);
 	    }
 
         TEST(TEST_CLASS, CantAddInvalidPriceToPriceList) {
@@ -738,7 +738,7 @@ namespace catapult { namespace plugins {
             addPrice(2u, 0u, 2u, 1); // neither lowPrice nor highPrice can be 0
             addPrice(3u, 2u, 0u, 1);
             addPrice(4u, 0u, 0u, 1);
-            EXPECT_EQ(priceList.size(), 0);
+            EXPECT_EQ(priceList.size(), 0u);
             generatePriceList();
             EXPECT_EQ(priceList.size(), MOCK_PRICES_COUNT);
             addPrice(std::get<0>(mockPrices[MOCK_PRICES_COUNT - 1]) - 1, 3u, 4u, 1);
@@ -748,7 +748,7 @@ namespace catapult { namespace plugins {
 
         TEST(TEST_CLASS, CanRemovePrice) {
             resetTests();
-            int remainingPricesExpected = MOCK_PRICES_COUNT - 1;
+            size_t remainingPricesExpected = MOCK_PRICES_COUNT - 1;
             // Remove the third price from the end
             uint64_t blockHeight = std::get<0>(mockPrices[MOCK_PRICES_COUNT - 3]);
             uint64_t lowPrice = std::get<1>(mockPrices[MOCK_PRICES_COUNT - 3]);
@@ -762,7 +762,7 @@ namespace catapult { namespace plugins {
         TEST(TEST_CLASS, DoesNotRemoveAnythingIfPriceNotFound) {
             resetTests();
             generatePriceList();
-            int remainingPricesExpected = MOCK_PRICES_COUNT;
+            size_t remainingPricesExpected = MOCK_PRICES_COUNT;
             // Make sure such a price doesn't exist
             uint64_t blockHeight = 751u;
             uint64_t lowPrice = 696u;
@@ -781,7 +781,7 @@ namespace catapult { namespace plugins {
             loadPricesFromFile();
             EXPECT_EQ(priceList.size(), MOCK_PRICES_COUNT);
             std::deque<std::tuple<uint64_t, uint64_t, uint64_t, double>>::iterator it = priceList.begin();
-            for (int i = 0; i < MOCK_PRICES_COUNT; ++i) {
+            for (size_t i = 0; i < MOCK_PRICES_COUNT; ++i) {
                 comparePrice(*it++, mockPrices[i]);
             }
 	    }
@@ -791,7 +791,7 @@ namespace catapult { namespace plugins {
             resetTests();
             std::ofstream fr("prices.txt"); // empty up the file
             loadPricesFromFile();
-            EXPECT_EQ(priceList.size(), 0);
+            EXPECT_EQ(priceList.size(), 0u);
 	    }
 
         //endregion price_helper
@@ -802,23 +802,23 @@ namespace catapult { namespace plugins {
             resetTests();
             generateTotalSupply();
             EXPECT_EQ(totalSupply.size(), MOCK_TOTAL_SUPPLY_ENTRIES);
-            EXPECT_EQ(std::get<0>(totalSupply.front()), 0);
+            EXPECT_EQ(std::get<0>(totalSupply.front()), 0u);
             removeOldTotalSupplyEntries(100);
             EXPECT_EQ(totalSupply.size(), MOCK_TOTAL_SUPPLY_ENTRIES - 1);
-            EXPECT_EQ(std::get<0>(totalSupply.front()), 100);
+            EXPECT_EQ(std::get<0>(totalSupply.front()), 100u);
             removeOldTotalSupplyEntries(300);
             EXPECT_EQ(totalSupply.size(), MOCK_TOTAL_SUPPLY_ENTRIES - 3);
-            EXPECT_EQ(std::get<0>(totalSupply.front()), 300);
+            EXPECT_EQ(std::get<0>(totalSupply.front()), 300u);
             removeOldTotalSupplyEntries(400);
-            EXPECT_EQ(totalSupply.size(), 0);
+            EXPECT_EQ(totalSupply.size(), 0u);
 	    }
 
         TEST(TEST_CLASS, CanAddTotalSupplyEntry) {
             resetTests();
-            EXPECT_EQ(totalSupply.size(), 0);
+            EXPECT_EQ(totalSupply.size(), 0u);
             addTotalSupplyEntry(1u, 2u, 2u);
-            EXPECT_EQ(totalSupply.size(), 1);
-            EXPECT_EQ(std::get<0>(totalSupply.front()), 1);
+            EXPECT_EQ(totalSupply.size(), 1u);
+            EXPECT_EQ(std::get<0>(totalSupply.front()), 1u);
 	    }
 
         TEST(TEST_CLASS, CantAddInvalidTotalSupplyEntries) {
@@ -828,12 +828,12 @@ namespace catapult { namespace plugins {
             addTotalSupplyEntry(1u, 0u, 2u); // entries can't be added to past blocks
             addTotalSupplyEntry(6u, 8u, 2u); // total supply can't be lower than previously specified
             addTotalSupplyEntry(4u, 13u, 1u); // total supply != previous total supply + increase
-            EXPECT_EQ(totalSupply.size(), 1);
+            EXPECT_EQ(totalSupply.size(), 1u);
 	    }
 
         TEST(TEST_CLASS, CanRemoveSupplyEntry) {
             resetTests();
-            int remainingPricesExpected = MOCK_TOTAL_SUPPLY_ENTRIES - 1;
+            size_t remainingPricesExpected = MOCK_TOTAL_SUPPLY_ENTRIES - 1;
             // Remove the third entry from the end
             uint64_t blockHeight = std::get<0>(mockTotalSupply[MOCK_TOTAL_SUPPLY_ENTRIES - 3]);
             uint64_t supply = std::get<1>(mockTotalSupply[MOCK_TOTAL_SUPPLY_ENTRIES - 3]);
@@ -846,7 +846,7 @@ namespace catapult { namespace plugins {
         TEST(TEST_CLASS, DoesNotRemoveAnythingIfEntryNotFound) {
             resetTests();
             generateTotalSupply();
-            int remainingPricesExpected = MOCK_TOTAL_SUPPLY_ENTRIES;
+            size_t remainingPricesExpected = MOCK_TOTAL_SUPPLY_ENTRIES;
             EXPECT_EQ(totalSupply.size(), remainingPricesExpected);
             // Make sure such an entry doesn't exist
             uint64_t blockHeight = 751;
@@ -863,9 +863,9 @@ namespace catapult { namespace plugins {
             updateTotalSupplyFile();
             resetTests();
             loadTotalSupplyFromFile();
-            EXPECT_EQ(totalSupply.size(), 1);
+            EXPECT_EQ(totalSupply.size(), 1u);
             std::deque<std::tuple<uint64_t, uint64_t, uint64_t>>::iterator it = totalSupply.begin();
-            for (int i = MOCK_TOTAL_SUPPLY_ENTRIES - 1; i < MOCK_TOTAL_SUPPLY_ENTRIES; ++i) {
+            for (size_t i = MOCK_TOTAL_SUPPLY_ENTRIES - 1; i < MOCK_TOTAL_SUPPLY_ENTRIES; ++i) {
                 compareTotalSupply(*it++, mockTotalSupply[i]);
             }
 	    }
@@ -875,7 +875,7 @@ namespace catapult { namespace plugins {
             resetTests();
             std::ofstream fr("totalSupply.txt"); // empty up the file
             loadTotalSupplyFromFile();
-            EXPECT_EQ(totalSupply.size(), 0);
+            EXPECT_EQ(totalSupply.size(), 0u);
 	    }
 
         //endregion total_supply_helper
@@ -886,35 +886,35 @@ namespace catapult { namespace plugins {
             resetTests();
             generateEpochFees();
             EXPECT_EQ(epochFees.size(), MOCK_EPOCH_FEE_ENTRIES);
-            EXPECT_EQ(std::get<0>(epochFees.front()), 0);
+            EXPECT_EQ(std::get<0>(epochFees.front()), 0u);
             removeOldEpochFeeEntries(100);
             EXPECT_EQ(epochFees.size(), MOCK_EPOCH_FEE_ENTRIES - 1);
-            EXPECT_EQ(std::get<0>(epochFees.front()), 100);
+            EXPECT_EQ(std::get<0>(epochFees.front()), 100u);
             removeOldEpochFeeEntries(300);
             EXPECT_EQ(epochFees.size(), MOCK_EPOCH_FEE_ENTRIES - 3);
-            EXPECT_EQ(std::get<0>(epochFees.front()), 300);
+            EXPECT_EQ(std::get<0>(epochFees.front()), 300u);
             removeOldEpochFeeEntries(400);
-            EXPECT_EQ(epochFees.size(), 0);
+            EXPECT_EQ(epochFees.size(), 0u);
 	    }
 
         TEST(TEST_CLASS, CanAddTotalEpochFeeEntry) {
             resetTests();
-            EXPECT_EQ(epochFees.size(), 0);
+            EXPECT_EQ(epochFees.size(), 0u);
             addEpochFeeEntry(1u, 2u, 2u, "address");
-            EXPECT_EQ(epochFees.size(), 1);
-            EXPECT_EQ(std::get<0>(epochFees.front()), 1);
+            EXPECT_EQ(epochFees.size(), 1u);
+            EXPECT_EQ(std::get<0>(epochFees.front()), 1u);
 	    }
 
         TEST(TEST_CLASS, CantAddInvalidEpochFeeEntries) {
             resetTests();
             addEpochFeeEntry(5u, 10u, 10u, "address");
             addEpochFeeEntry(3, 1, 1, "address"); // block lower than the previous
-            EXPECT_EQ(epochFees.size(), 1);
+            EXPECT_EQ(epochFees.size(), 1u);
 	    }
 
         TEST(TEST_CLASS, CanRemoveEpochFeeEntry) {
             resetTests();
-            int remainingPricesExpected = MOCK_EPOCH_FEE_ENTRIES - 1;
+            size_t remainingPricesExpected = MOCK_EPOCH_FEE_ENTRIES - 1;
             // Remove the third entry from the end
             uint64_t blockHeight = std::get<0>(mockEpochFees[MOCK_EPOCH_FEE_ENTRIES - 3]);
             uint64_t collectedFees = std::get<1>(mockEpochFees[MOCK_EPOCH_FEE_ENTRIES - 3]);
@@ -927,7 +927,7 @@ namespace catapult { namespace plugins {
         TEST(TEST_CLASS, DoesNotRemoveAnythingIfEpochFeeEntryNotFound) {
             resetTests();
             generateEpochFees();
-            int remainingPricesExpected = MOCK_EPOCH_FEE_ENTRIES;
+            size_t remainingPricesExpected = MOCK_EPOCH_FEE_ENTRIES;
             EXPECT_EQ(epochFees.size(), remainingPricesExpected);
             // Make sure such an entry doesn't exist
             uint64_t blockHeight = 751;
@@ -944,9 +944,9 @@ namespace catapult { namespace plugins {
             updateEpochFeeFile();
             resetTests();
             loadEpochFeeFromFile();
-            EXPECT_EQ(epochFees.size(), 1);
+            EXPECT_EQ(epochFees.size(), 1u);
             std::deque<std::tuple<uint64_t, uint64_t, uint64_t, std::string>>::iterator it = epochFees.begin();
-            for (int i = MOCK_EPOCH_FEE_ENTRIES - 1; i < MOCK_EPOCH_FEE_ENTRIES; ++i) {
+            for (size_t i = MOCK_EPOCH_FEE_ENTRIES - 1; i < MOCK_EPOCH_FEE_ENTRIES; ++i) {
                 compareTotalEpochFees(*it++, mockEpochFees[i]);
             }
 	    }
@@ -956,7 +956,7 @@ namespace catapult { namespace plugins {
             resetTests();
             std::ofstream fr("epochFees.txt"); // empty up the file
             loadEpochFeeFromFile();
-            EXPECT_EQ(totalSupply.size(), 0);
+            EXPECT_EQ(totalSupply.size(), 0u);
 	    }
 
         //region epoch_fees_helper

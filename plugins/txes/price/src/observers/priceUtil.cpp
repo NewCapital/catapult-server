@@ -19,19 +19,41 @@
 #define PRICE_DATA_SIZE 4
 #define SUPPLY_DATA_SIZE 3
 #define EPOCH_FEES_DATA_SIZE 4
-
-// TODO: move to config files
 #define FEE_RECALCULATION_FREQUENCY 10
 #define MULTIPLIER_RECALCULATION_FREQUENCY 5
 
+#ifdef __USE_GNU
+typedef int errno_t;
+#endif
+
+#if defined(__USE_GNU) || defined(__APPLE__)
+static errno_t fopen_s(FILE **f, const char *name, const char *mode) {
+    errno_t ret = 0;
+    assert(f);
+    *f = fopen(name, mode);
+    if (!*f)
+        ret = errno;
+    return ret;
+}
+#endif
+
+static bool areSame(double a, double b) {
+    return std::fabs(a - b) < std::numeric_limits<double>::epsilon();
+}
+
 namespace catapult { namespace plugins {
 
-    std::deque<std::tuple<uint64_t, uint64_t, uint64_t, double>> priceList;
-    std::deque<std::tuple<uint64_t, uint64_t, uint64_t>> totalSupply;
-    std::deque<std::tuple<uint64_t, uint64_t, uint64_t, std::string>> epochFees;
+    /**
+     *  wowazzz: bad case using global variables
+     *  types std::string and std::deque
+     *  (Clang compiler error)
+     *  -Wglobal-constructors -Wexit-time-destructors
+     */
+    NODESTROY std::deque<std::tuple<uint64_t, uint64_t, uint64_t, double>> priceList;
+    NODESTROY std::deque<std::tuple<uint64_t, uint64_t, uint64_t>> totalSupply;
+    NODESTROY std::deque<std::tuple<uint64_t, uint64_t, uint64_t, std::string>> epochFees;
     double currentMultiplier = 1;
     uint64_t feeToPay = 0;
-
 
     //region block_reward
 
@@ -39,13 +61,23 @@ namespace catapult { namespace plugins {
     double approximate(double number) {
         if (number > pow(10, 10)) {
             // if there are more than 10 digits before the decimal point, ignore the decimal digits
-            number = (double)(static_cast<uint64_t>(number + 0.5));
+            /**
+             * wowazzz: Is that simple round() ??
+             * 
+             * number = (double)(static_cast<uint64_t>(number + 0.5));
+             */
+            number = round(number);
         } else {
             for (int i = 0; i < 10; ++i) {
                 if (pow(10, i + 1) > number) { // i + 1 digits left to the decimal point
                     if (i < 4)
                         i = 4;
-                    number = (double)(static_cast<uint64_t>(number * pow(10, 9 - i) + 0.5)) / pow(10, 9 - i);
+                    /**
+                     * wowazzz: Is that simple round() ??
+                     * 
+                     * number = (double)(static_cast<uint64_t>(number * pow(10, 9 - i) + 0.5)) / pow(10, 9 - i);
+                     */
+                    number = round(number * pow(10, 9 - i)) / pow(10, 9 - i);
                     break;
                 }
             }
@@ -54,9 +86,9 @@ namespace catapult { namespace plugins {
     }
 
     double getCoinGenerationMultiplier(uint64_t blockHeight, bool rollback) {
-        if (blockHeight % MULTIPLIER_RECALCULATION_FREQUENCY > 0 && currentMultiplier != 0 && !rollback) // recalculate only every 720 blocks
+        if (blockHeight % MULTIPLIER_RECALCULATION_FREQUENCY > 0 && !areSame(currentMultiplier, 0) != 0 && !rollback) // recalculate only every 720 blocks
             return currentMultiplier;
-        else if (currentMultiplier == 0)
+        else if (areSame(currentMultiplier, 0))
             currentMultiplier = 1;
 
         if (rollback) {
@@ -69,13 +101,13 @@ namespace catapult { namespace plugins {
         }
         double average30 = 0, average60 = 0, average90 = 0, average120 = 0;
         getAverage(blockHeight, average30, average60, average90, average120);
-        if (average60 == 0) { // either it hasn't been long enough or data is missing
+        if ( areSame(average60, 0) ) { // either it hasn't been long enough or data is missing
             currentMultiplier = 1;
             return 1;
         }
         double increase30 = average30 / average60;
-        double increase60 = average90 == 0 ? 0 : average60 / average90;
-        double increase90 = average120 == 0 ? 0 : average90 / average120;
+        double increase60 = areSame(average90, 0) ? 0 : average60 / average90;
+        double increase90 = areSame(average120, 0) ? 0 : average90 / average120;
         currentMultiplier = approximate(currentMultiplier * getMultiplier(increase30, increase60, increase90));
         return currentMultiplier;
     }
@@ -89,38 +121,38 @@ namespace catapult { namespace plugins {
             if (increase90 >= 1.25) {
                 min = getMin(increase30, increase60, increase90);
                 if (min >= 1.55)
-                    return approximate(1 + 0.735 / EPOCHS_PER_YEAR);
+                    return approximate(1 + 0.735 / static_cast<double>(EPOCHS_PER_YEAR));
                 else if (min >= 1.45)
-                    return approximate(1 + (0.67 + (min - 1.45) * 0.65) / EPOCHS_PER_YEAR);
+                    return approximate(1 + (0.67 + (min - 1.45) * 0.65) / static_cast<double>(EPOCHS_PER_YEAR));
                 else if (min >= 1.35)
-                    return approximate(1 + (0.61 + (min - 1.35) * 0.6) / EPOCHS_PER_YEAR);
+                    return approximate(1 + (0.61 + (min - 1.35) * 0.6) / static_cast<double>(EPOCHS_PER_YEAR));
                 else if (min >= 1.25)
-                    return approximate(1 + (0.55 + (min - 1.25) * 0.6) / EPOCHS_PER_YEAR);
+                    return approximate(1 + (0.55 + (min - 1.25) * 0.6) / static_cast<double>(EPOCHS_PER_YEAR));
             } else {
                 min = getMin(increase30, increase60);
                 if (min >= 1.55)
-                    return approximate(1 + 0.49 / EPOCHS_PER_YEAR);
+                    return approximate(1 + 0.49 / static_cast<double>(EPOCHS_PER_YEAR));
                 else if (min >= 1.45)
-                    return approximate(1 + (0.43 + (min - 1.45) * 0.6) / EPOCHS_PER_YEAR);
+                    return approximate(1 + (0.43 + (min - 1.45) * 0.6) / static_cast<double>(EPOCHS_PER_YEAR));
                 else if (min >= 1.35)
-                    return approximate(1 + (0.37 + (min - 1.35) * 0.6) / EPOCHS_PER_YEAR);
+                    return approximate(1 + (0.37 + (min - 1.35) * 0.6) / static_cast<double>(EPOCHS_PER_YEAR));
                 else if (min >= 1.25)
-                    return approximate(1 + (0.31 + (min - 1.25) * 0.6) / EPOCHS_PER_YEAR);
+                    return approximate(1 + (0.31 + (min - 1.25) * 0.6) / static_cast<double>(EPOCHS_PER_YEAR));
             }
         } else if (increase30 >= 1.05) {
             min = increase30;
             if (min >= 1.55)
-                return approximate(1 + 0.25 / EPOCHS_PER_YEAR);
+                return approximate(1 + 0.25 / static_cast<double>(EPOCHS_PER_YEAR));
             else if (min >= 1.45)
-                return approximate(1 + (0.19 + (min - 1.45) * 0.6) / EPOCHS_PER_YEAR);
+                return approximate(1 + (0.19 + (min - 1.45) * 0.6) / static_cast<double>(EPOCHS_PER_YEAR));
             else if (min >= 1.35)
-                return approximate(1 + (0.13 + (min - 1.35) * 0.6) / EPOCHS_PER_YEAR);
+                return approximate(1 + (0.13 + (min - 1.35) * 0.6) / static_cast<double>(EPOCHS_PER_YEAR));
             else if (min >= 1.25)
-                return approximate(1 + (0.095 + (min - 1.25) * 0.35) / EPOCHS_PER_YEAR);
+                return approximate(1 + (0.095 + (min - 1.25) * 0.35) / static_cast<double>(EPOCHS_PER_YEAR));
             else if (min >= 1.15)
-                return approximate(1 + (0.06 + (min - 1.15) * 0.35) / EPOCHS_PER_YEAR);
+                return approximate(1 + (0.06 + (min - 1.15) * 0.35) / static_cast<double>(EPOCHS_PER_YEAR));
             else if (min >= 1.05)
-                return approximate(1 + (0.025 + (min - 1.05) * 0.35) / EPOCHS_PER_YEAR);
+                return approximate(1 + (0.025 + (min - 1.05) * 0.35) / static_cast<double>(EPOCHS_PER_YEAR));
         }
         return 1;
     }
@@ -154,7 +186,7 @@ namespace catapult { namespace plugins {
                     break;
                 }
             }
-            feeToPay = static_cast<unsigned int>((double)collectedEpochFees / FEE_RECALCULATION_FREQUENCY + 0.5);
+            feeToPay = static_cast<unsigned int>(static_cast<double>collectedEpochFees / static_cast<double>FEE_RECALCULATION_FREQUENCY + 0.5);
         }
         return feeToPay;
     }
@@ -198,7 +230,7 @@ namespace catapult { namespace plugins {
                 // ignore price messages into the future
                 continue;
             }
-            *averagePtr += (double)(std::get<1>(*it) + std::get<2>(*it));
+            *averagePtr += static_cast<double>(std::get<1>(*it) + std::get<2>(*it));
             ++count;
         }
         if (count > 0 && blockHeight + 1u >= boundary) {
@@ -214,7 +246,7 @@ namespace catapult { namespace plugins {
     }
 
     double getMin(double num1, double num2, double num3) {
-        if (num3 == -1) {
+        if (areSame(num3, -1)) {
             return num1 >= num2 ? num2 : num1;
         }
         return num1 >= num2 ? (num3 >= num2 ? num2 : num3) : num1; 
@@ -229,7 +261,7 @@ namespace catapult { namespace plugins {
 					(std::get<0>(*it) == blockHeight && 
 					std::get<1>(*it) == lowPrice &&
 					std::get<2>(*it) == highPrice &&
-                    std::get<3>(*it) == multiplier)) {
+                    areSame(std::get<3>(*it), multiplier))) {
 					
 					catapult::plugins::removePrice(blockHeight, lowPrice, highPrice, multiplier);
 				}
@@ -295,7 +327,7 @@ namespace catapult { namespace plugins {
             }
 
             if (previousTransactionHeight == blockHeight && std::get<1>(priceList.back()) == lowPrice &&
-                std::get<2>(priceList.back()) == highPrice && std::get<3>(priceList.back()) == multiplier) {
+                std::get<2>(priceList.back()) == highPrice && areSame(std::get<3>(priceList.back()), multiplier)) {
                 // data matches, so must be a duplicate, however, no need to resynchronise prices
                 CATAPULT_LOG(warning) << "Warning: price transaction data is equal to the previous price transaction data: "
                     << "block height: " << blockHeight << ", lowPrice: " << lowPrice << ", highPrice: " << highPrice << "\n";
@@ -319,7 +351,7 @@ namespace catapult { namespace plugins {
                 break;
                 
             if (std::get<0>(*it) == blockHeight && std::get<1>(*it) == lowPrice &&
-                std::get<2>(*it) == highPrice && std::get<3>(*it) == multiplier) {
+                std::get<2>(*it) == highPrice && areSame(std::get<3>(*it), multiplier)) {
                 it = decltype(it)(priceList.erase(std::next(it).base()));
                 CATAPULT_LOG(info) << "Price removed from the list for block " << blockHeight 
                     << ", lowPrice: " << lowPrice << ", highPrice: " << highPrice << ", multiplier: "
@@ -332,10 +364,11 @@ namespace catapult { namespace plugins {
 
     void addPriceEntryToFile(uint64_t blockHeight, uint64_t lowPrice, uint64_t highPrice, double multiplier) {
         long size = 0;
-        FILE *file = std::fopen("prices.txt", "r+");
-        if (!file) {
-            file = std::fopen("prices.txt", "w+");
-            if (!file) {
+        FILE *file;
+        errno_t err = fopen_s(&file, "prices.txt", "r+");
+        if (err != 0) {
+            err = fopen_s(&file, "prices.txt", "w+");
+            if (err != 0) {
                 CATAPULT_LOG(error) << "Error: Can't open nor create the prices.txt file\n";
                 return;
             }
@@ -362,13 +395,16 @@ namespace catapult { namespace plugins {
         
         for (int i = 0; i < PRICE_DATA_SIZE; ++i) {
             // add spaces to string as padding
-            size = priceData[i].length();
+            /** 
+             * wowazzz: One variable `size` is used for 2 meaning?..weird
+             */
+            std::size_t priceSize = priceData[i].length();
             if (i > 0 && i < PRICE_DATA_SIZE - 1) {
-                for (int j = 0; j < 15 - size; ++j) {
+                for (std::size_t j = 0; j < 15 - priceSize; ++j) {
                     priceData[i] += ' ';
                 }
             } else {
-                for (int j = 0; j < 10 - size; ++j) {
+                for (std::size_t j = 0; j < 10 - priceSize; ++j) {
                     priceData[i] += ' ';
                 }
             }
@@ -378,8 +414,10 @@ namespace catapult { namespace plugins {
     }
 
     void updatePricesFile() {
-        FILE *file = std::fopen("prices.txt", "w"); // erase and rewrite the prices
-        fclose(file);
+        FILE *file;
+        errno_t err = fopen_s(&file, "prices.txt", "w"); // erase and rewrite the prices
+        if (err == 0)
+            fclose(file);
         std::deque<std::tuple<uint64_t, uint64_t, uint64_t, double>>::iterator it;
         for (it = priceList.begin(); it != priceList.end(); ++it) {
             addPriceEntryToFile(std::get<0>(*it), std::get<1>(*it), std::get<2>(*it), std::get<3>(*it));
@@ -389,23 +427,23 @@ namespace catapult { namespace plugins {
     std::string pricesToString() {
         std::string list = "height:   lowPrice:      highPrice:    multiplier\n";
         std::deque<std::tuple<uint64_t, uint64_t, uint64_t, double>>::iterator it;
-        long length = 0;
+        std::size_t length = 0;
         for (it = priceList.begin(); it != priceList.end(); ++it) {
             list += std::to_string(std::get<0>(*it));
             length = std::to_string(std::get<0>(*it)).length();
-            for (int i = 0; i < 10 - length; ++i)
+            for (std::size_t i = 0; i < 10 - length; ++i)
                 list += ' ';
             list += std::to_string(std::get<1>(*it));
             length = std::to_string(std::get<1>(*it)).length();
-            for (int i = 0; i < 15 - length; ++i)
+            for (std::size_t i = 0; i < 15 - length; ++i)
                 list += ' ';
             list += std::to_string(std::get<2>(*it));
             length = std::to_string(std::get<2>(*it)).length();
-            for (int i = 0; i < 15 - length; ++i)
+            for (std::size_t i = 0; i < 15 - length; ++i)
                 list += ' ';
             list += std::to_string(std::get<3>(*it));
             length = std::to_string(std::get<3>(*it)).length();
-            for (int i = 0; i < 10 - length; ++i)
+            for (std::size_t i = 0; i < 10 - length; ++i)
                 list += ' ';
             list += '\n';
         }
@@ -418,8 +456,9 @@ namespace catapult { namespace plugins {
         bool errors = false;
         std::string blockHeight = "", lowPrice = "", highPrice = "", multiplierStr = "";
         priceList.clear();
-        FILE *file = std::fopen("prices.txt", "r+");
-        if (!file) {
+        FILE *file;
+        errno_t err = fopen_s(&file, "prices.txt", "r+");
+        if (err != 0) {
             CATAPULT_LOG(warning) << "Warning: prices.txt does not exist\n";
             return;
         }
@@ -441,20 +480,20 @@ namespace catapult { namespace plugins {
             highPrice = "";
             multiplierStr = "";
             for (int i = 0; i < 10 && !feof(file); ++i) {
-                blockHeight += (char)getc(file);
+                blockHeight += static_cast<char>(getc(file));
             } for (int i = 0; i < 15 && !feof(file); ++i) {
-                lowPrice += (char)getc(file);;
+                lowPrice += static_cast<char>(getc(file));
             } for (int i = 0; i < 15 && !feof(file); ++i) {
-                highPrice += (char)getc(file);;
+                highPrice += static_cast<char>(getc(file));
             } for (int i = 0; i < 10 && !feof(file); ++i) {
-                multiplierStr += (char)getc(file);;
+                multiplierStr += static_cast<char>(getc(file));
             }
 
             errors = !addPrice(std::stoul(blockHeight), std::stoul(lowPrice), std::stoul(highPrice), std::stod(multiplierStr),
                 false);
             currentMultiplier = 0;
             multiplier = getCoinGenerationMultiplier(std::stoul(blockHeight));
-            if (multiplier != stod(multiplierStr)) {
+            if ( !areSame(multiplier, stod(multiplierStr)) ) {
                 CATAPULT_LOG(error) << "Error: actual multiplier (" << multiplier << ") doesn't match the multiplier"
                     << " specified in the file (" << multiplierStr << ")\n";
                 errors = true;
@@ -556,10 +595,11 @@ namespace catapult { namespace plugins {
 
     void addTotalSupplyEntryToFile(uint64_t blockHeight, uint64_t supplyAmount, uint64_t increase) {
         long size = 0;
-        FILE *file = std::fopen("totalSupply.txt", "r+");
-        if (!file) {
-            file = std::fopen("totalSupply.txt", "w+");
-            if (!file) {
+        FILE *file;
+        errno_t err = fopen_s(&file, "totalSupply.txt", "r+");
+        if (err != 0) {
+            err = fopen_s(&file, "totalSupply.txt", "w+");
+            if (err != 0) {
                 CATAPULT_LOG(error) << "Error: Can't open nor create the totalSupply.txt file\n";
                 return;
             }
@@ -585,13 +625,16 @@ namespace catapult { namespace plugins {
         
         for (int i = 0; i < SUPPLY_DATA_SIZE; ++i) {
             // add spaces to string as padding
-            size = supplyData[i].length();
+            /** 
+             * wowazzz: One variable `size` is used for 2 meaning?..weird
+             */
+            std::size_t supplySize = supplyData[i].length();
             if (i > 0) {
-                for (int j = 0; j < 12 - size; ++j) {
+                for (std::size_t j = 0; j < 12 - supplySize; ++j) {
                     supplyData[i] += ' ';
                 }
             } else {
-                for (int j = 0; j < 10 - size; ++j) {
+                for (std::size_t j = 0; j < 10 - supplySize; ++j) {
                     supplyData[i] += ' ';
                 }
             }
@@ -601,8 +644,10 @@ namespace catapult { namespace plugins {
     }
 
     void updateTotalSupplyFile() {
-        FILE *file = std::fopen("totalSupply.txt", "w"); // erase and rewrite the prices
-        fclose(file);
+        FILE *file;
+        errno_t err = fopen_s(&file, "totalSupply.txt", "w"); // erase and rewrite the prices
+        if (err == 0)
+            fclose(file);
         std::deque<std::tuple<uint64_t, uint64_t, uint64_t>>::iterator it;
         for (it = totalSupply.begin(); it != totalSupply.end(); ++it) {
             addTotalSupplyEntryToFile(std::get<0>(*it), std::get<1>(*it), std::get<2>(*it));
@@ -612,19 +657,19 @@ namespace catapult { namespace plugins {
     std::string totalSupplyToString() {
         std::string list = "height:   supply:     increase:   \n";
         std::deque<std::tuple<uint64_t, uint64_t, uint64_t>>::iterator it;
-        long length = 0;
+        std::size_t length = 0;
         for (it = totalSupply.begin(); it != totalSupply.end(); ++it) {
             list += std::to_string(std::get<0>(*it));
             length = std::to_string(std::get<0>(*it)).length();
-            for (int i = 0; i < 10 - length; ++i)
+            for (std::size_t i = 0; i < 10 - length; ++i)
                 list += ' ';
             list += std::to_string(std::get<1>(*it));
             length = std::to_string(std::get<1>(*it)).length();
-            for (int i = 0; i < 12 - length; ++i)
+            for (std::size_t i = 0; i < 12 - length; ++i)
                 list += ' ';
             list += std::to_string(std::get<2>(*it));
             length = std::to_string(std::get<2>(*it)).length();
-            for (int i = 0; i < 12 - length; ++i)
+            for (std::size_t i = 0; i < 12 - length; ++i)
                 list += ' ';
             list += '\n';
         }
@@ -636,8 +681,9 @@ namespace catapult { namespace plugins {
         bool errors = false;
         std::string blockHeight = "", supply = "", increase = "";
         totalSupply.clear();
-        FILE *file = std::fopen("totalSupply.txt", "r+");
-        if (!file) {
+        FILE *file;
+        errno_t err = fopen_s(&file, "totalSupply.txt", "r+");
+        if (err != 0) {
             CATAPULT_LOG(warning) << "Warning: totalSupply.txt does not exist\n";
             return;
         }
@@ -658,11 +704,11 @@ namespace catapult { namespace plugins {
             supply = "";
             increase = "";
             for (int i = 0; i < 10 && !feof(file); ++i) {
-                blockHeight += (char)getc(file);
+                blockHeight += static_cast<char>(getc(file));
             } for (int i = 0; i < 12 && !feof(file); ++i) {
-                supply += (char)getc(file);;
+                supply += static_cast<char>(getc(file));
             } for (int i = 0; i < 12 && !feof(file); ++i) {
-                increase += (char)getc(file);;
+                increase += static_cast<char>(getc(file));
             }
 
             errors = !addTotalSupplyEntry(std::stoul(blockHeight), std::stoul(supply), std::stoul(increase), false);
@@ -757,10 +803,11 @@ namespace catapult { namespace plugins {
 
     void addEpochFeeEntryToFile(uint64_t blockHeight, uint64_t collectedFees, uint64_t blockFee, std::string address) {
         long size = 0;
-        FILE *file = std::fopen("epochFees.txt", "r+");
-        if (!file) {
-            file = std::fopen("epochFees.txt", "w+");
-            if (!file) {
+        FILE *file;
+        errno_t err = fopen_s(&file, "epochFees.txt", "r+");
+        if (err != 0) {
+            err = fopen_s(&file, "epochFees.txt", "w+");
+            if (err != 0) {
                 CATAPULT_LOG(error) << "Error: Can't open nor create the epochFees.txt file\n";
                 return;
             }
@@ -787,17 +834,20 @@ namespace catapult { namespace plugins {
         
         for (int i = 0; i < EPOCH_FEES_DATA_SIZE; ++i) {
             // add spaces to string as padding
-            size = epochFeesData[i].length();
+            /** 
+             * wowazzz: One variable `size` is used for 2 meaning?..weird
+             */
+            std::size_t epochSize = epochFeesData[i].length();
             if (i > 0 && i < EPOCH_FEES_DATA_SIZE - 1) {
-                for (int j = 0; j < 12 - size; ++j) {
+                for (std::size_t j = 0; j < 12 - epochSize; ++j) {
                     epochFeesData[i] += ' ';
                 }
             } else if (i == EPOCH_FEES_DATA_SIZE - 1) {
-                for (int j = 0; j < 50 - size; ++j) {
+                for (std::size_t j = 0; j < 50 - epochSize; ++j) {
                     epochFeesData[i] += ' ';
                 }
             } else {
-                for (int j = 0; j < 10 - size; ++j) {
+                for (std::size_t j = 0; j < 10 - epochSize; ++j) {
                     epochFeesData[i] += ' ';
                 }
             }
@@ -807,8 +857,10 @@ namespace catapult { namespace plugins {
     }
 
     void updateEpochFeeFile() {
-        FILE *file = std::fopen("epochFees.txt", "w"); // erase and rewrite the data
-        fclose(file);
+        FILE *file;
+        errno_t err = fopen_s(&file, "epochFees.txt", "w"); // erase and rewrite the data
+        if (err == 0)
+            fclose(file);
         std::deque<std::tuple<uint64_t, uint64_t, uint64_t, std::string>>::iterator it;
         for (it = epochFees.begin(); it != epochFees.end(); ++it) {
             addEpochFeeEntryToFile(std::get<0>(*it), std::get<1>(*it), std::get<2>(*it), std::get<3>(*it));
@@ -818,23 +870,23 @@ namespace catapult { namespace plugins {
     std::string epochFeeToString() {
         std::string list = "height:   collected:  feeToPay:  \n";
         std::deque<std::tuple<uint64_t, uint64_t, uint64_t, std::string>>::iterator it;
-        long length = 0;
+        std::size_t length = 0;
         for (it = epochFees.begin(); it != epochFees.end(); ++it) {
             list += std::to_string(std::get<0>(*it));
             length = std::to_string(std::get<0>(*it)).length();
-            for (int i = 0; i < 10 - length; ++i)
+            for (std::size_t i = 0; i < 10 - length; ++i)
                 list += ' ';
             list += std::to_string(std::get<1>(*it));
             length = std::to_string(std::get<1>(*it)).length();
-            for (int i = 0; i < 12 - length; ++i)
+            for (std::size_t i = 0; i < 12 - length; ++i)
                 list += ' ';
             list += std::to_string(std::get<2>(*it));
             length = std::to_string(std::get<2>(*it)).length();
-            for (int i = 0; i < 12 - length; ++i)
+            for (std::size_t i = 0; i < 12 - length; ++i)
                 list += ' ';
             list += (std::get<3>(*it));
             length = std::get<3>(*it).length();
-            for (int i = 0; i < 50 - length; ++i)
+            for (std::size_t i = 0; i < 50 - length; ++i)
                 list += ' ';
             list += '\n';
         }
@@ -847,8 +899,9 @@ namespace catapult { namespace plugins {
         char character;
         std::string blockHeight = "", collectedFees = "", currentFee = "", address = "";
         epochFees.clear();
-        FILE *file = std::fopen("epochFees.txt", "r+");
-        if (!file) {
+        FILE *file;
+        errno_t err = fopen_s(&file, "epochFees.txt", "r+");
+        if (err != 0) {
             CATAPULT_LOG(warning) << "Warning: epochFees.txt does not exist\n";
             return;
         }
@@ -870,13 +923,13 @@ namespace catapult { namespace plugins {
             currentFee = "";
             address = "";
             for (int i = 0; i < 10 && !feof(file); ++i) {
-                blockHeight += (char)getc(file);
+                blockHeight += static_cast<char>(getc(file));
             } for (int i = 0; i < 12 && !feof(file); ++i) {
-                collectedFees += (char)getc(file);;
+                collectedFees += static_cast<char>(getc(file));
             } for (int i = 0; i < 12 && !feof(file); ++i) {
-                currentFee += (char)getc(file);;
+                currentFee += static_cast<char>(getc(file));
             } for (int i = 0; i < 50 && !feof(file); ++i) {
-                character = (char)getc(file);
+                character = static_cast<char>(getc(file));
                 if (character != ' ') {
                     address += character;
                 }

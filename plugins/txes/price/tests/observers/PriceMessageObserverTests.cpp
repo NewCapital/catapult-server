@@ -33,7 +33,11 @@ namespace catapult { namespace observers {
 
 #define TEST_CLASS PriceMessageObserverTests
 
-	DEFINE_COMMON_OBSERVER_TESTS(PriceMessage)
+	/**
+	 *  wowazzz: from Clang compiler:
+	 *  error: must specify at least one argument for '...' parameter of variadic macro
+	 */
+	DEFINE_COMMON_OBSERVER_TESTS(PriceMessage,)
 
 	// region traits
 
@@ -41,12 +45,12 @@ namespace catapult { namespace observers {
 		using namespace catapult::plugins;
 
 		struct CommitTraits {
-			static constexpr uint8_t Message_First_Byte = 0;
+			//static constexpr uint8_t Message_First_Byte = 0;
 			static constexpr auto Notify_Mode = NotifyMode::Commit;
 		};
 
 		struct RollbackTraits {
-			static constexpr uint8_t Message_First_Byte = 1;
+			//static constexpr uint8_t Message_First_Byte = 1;
 			static constexpr auto Notify_Mode = NotifyMode::Rollback;
 		};
 	}
@@ -79,10 +83,10 @@ namespace catapult { namespace observers {
 				test::ObserveNotification(*pObserver, notification, context);
 
 				if (m_notifyMode == NotifyMode::Rollback)
-					EXPECT_EQ(priceList.size(), 0); // removes the price
+					EXPECT_EQ(priceList.size(), 0u); // removes the price
 
 				if (m_notifyMode == NotifyMode::Commit)
-					EXPECT_EQ(priceList.size(), 1); // adds a price
+					EXPECT_EQ(priceList.size(), 1u); // adds a price
 			}
 
 		private:

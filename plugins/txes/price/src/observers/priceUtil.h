@@ -4,6 +4,12 @@
 #include "catapult/types.h"
 #include <string>
 
+#ifdef __APPLE__
+#define NODESTROY [[clang::no_destroy]]
+#else
+#define NODESTROY  
+#endif
+
 namespace catapult {
 	namespace plugins {
 

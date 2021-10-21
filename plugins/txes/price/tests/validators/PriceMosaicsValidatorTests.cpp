@@ -25,6 +25,6 @@
 
 namespace catapult { namespace validators {
 
-#define TEST_CLASS PriceMosaicsValidatorTests
+//#define TEST_CLASS PriceMosaicsValidatorTests
 
 }}

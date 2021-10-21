@@ -157,7 +157,7 @@ namespace catapult { namespace observers {
 
 			const auto& receipt = static_cast<const model::BalanceChangeReceipt&>(receiptPair.second.receiptAt(0));
 			AssertReceipt(accountStateIter.get().PublicKey, Amount(20), receipt);
-			EXPECT_EQ(catapult::plugins::feeToPay, 20); // Unchanged
+			EXPECT_EQ(catapult::plugins::feeToPay, 20u); // Unchanged
 		});
 	}
 
@@ -548,13 +548,13 @@ namespace catapult { namespace observers {
 			{ beneficiary, Amount(100 + static_cast<uint64_t>(12)) },
 			{ Key(), Amount(static_cast<uint64_t>(60)) }
 		});
-		EXPECT_EQ(std::get<0>(catapult::plugins::totalSupply.back()), 555);
-		EXPECT_EQ(std::get<1>(catapult::plugins::totalSupply.back()), 2102400060);
-		EXPECT_EQ(std::get<2>(catapult::plugins::totalSupply.back()), 60);
+		EXPECT_EQ(std::get<0>(catapult::plugins::totalSupply.back()), 555u);
+		EXPECT_EQ(std::get<1>(catapult::plugins::totalSupply.back()), 2102400060u);
+		EXPECT_EQ(std::get<2>(catapult::plugins::totalSupply.back()), 60u);
 		
-		EXPECT_EQ(std::get<0>(catapult::plugins::epochFees.back()), 555);
-		EXPECT_EQ(std::get<1>(catapult::plugins::epochFees.back()), 500);
-		EXPECT_EQ(std::get<2>(catapult::plugins::epochFees.back()), 500);
+		EXPECT_EQ(std::get<0>(catapult::plugins::epochFees.back()), 555u);
+		EXPECT_EQ(std::get<1>(catapult::plugins::epochFees.back()), 500u);
+		EXPECT_EQ(std::get<2>(catapult::plugins::epochFees.back()), 500u);
 	}
 
 	TEST(TEST_CLASS, HarvesterSharesInflationAccordingToGivenPercentage_Rollback) {
@@ -577,11 +577,11 @@ namespace catapult { namespace observers {
 		// Act + Assert:
 		AssertHarvesterSharesFees(NotifyMode::Rollback, harvester, beneficiary, options, Amount(500), calculator, finalBalances, {});
 		
-		EXPECT_EQ(std::get<0>(catapult::plugins::totalSupply.back()), 554);
-		EXPECT_EQ(std::get<1>(catapult::plugins::totalSupply.back()), 2102400000);
-		EXPECT_EQ(std::get<2>(catapult::plugins::totalSupply.back()), 2102400000);
+		EXPECT_EQ(std::get<0>(catapult::plugins::totalSupply.back()), 554u);
+		EXPECT_EQ(std::get<1>(catapult::plugins::totalSupply.back()), 2102400000u);
+		EXPECT_EQ(std::get<2>(catapult::plugins::totalSupply.back()), 2102400000u);
 		
-		EXPECT_EQ(catapult::plugins::epochFees.size(), 0);
+		EXPECT_EQ(catapult::plugins::epochFees.size(), 0u);
 	}
 
 	// endregion

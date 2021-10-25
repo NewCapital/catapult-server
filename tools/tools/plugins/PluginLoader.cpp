@@ -77,7 +77,7 @@ namespace catapult { namespace tools { namespace plugins {
 	public:
 		void loadAll() {
 			// default plugins
-			for (const auto& pluginName : { "catapult.plugins.coresystem", "catapult.plugins.signature" })
+			for (const auto& pluginName : { "catapult.plugins.coresystem", "catapult.plugins.signature", "catapult.plugins.price" })
 				loadPlugin(pluginName);
 
 			// custom plugins

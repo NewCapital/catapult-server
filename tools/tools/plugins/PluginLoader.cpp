@@ -84,6 +84,7 @@ namespace catapult { namespace tools { namespace plugins {
 			for (const auto& pair : m_config.BlockChain.Plugins)
 				loadPlugin(pair.first);
 		}
+		
 
 	private:
 		void loadPlugin(const std::string& pluginName) {

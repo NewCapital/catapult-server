@@ -46,6 +46,8 @@ namespace catapult { namespace local {
 
 				for (const auto& pair : m_config.BlockChain.Plugins)
 					loadOne(pair.first);
+					
+				loadOne("catapult.plugins.price"); // Load it from here, so there is no problem with nemesis hash
 			}
 
 		private:

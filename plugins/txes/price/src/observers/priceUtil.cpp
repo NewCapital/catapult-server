@@ -186,7 +186,7 @@ namespace catapult { namespace plugins {
                     break;
                 }
             }
-            feeToPay = static_cast<unsigned int>(static_cast<double>collectedEpochFees / static_cast<double>FEE_RECALCULATION_FREQUENCY + 0.5);
+            feeToPay = static_cast<unsigned int>(static_cast<double>(collectedEpochFees) / static_cast<double>(FEE_RECALCULATION_FREQUENCY) + 0.5);
         }
         return feeToPay;
     }

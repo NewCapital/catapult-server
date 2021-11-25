@@ -772,7 +772,7 @@ namespace catapult { namespace plugins {
                 for (unsigned int i = 0; i < prevAddresses.size(); ++i) {
                     if (prevAddresses[i] == address) {
                         CATAPULT_LOG(warning) << "Warning: skipping a duplicate epoch fee entry for block: " << blockHeight <<
-                            ", collected fees: " << collectedFees << ", currentFee: " << currentFee << "\n";
+                            ", collected fees: " << collectedFees << ", currentFee: " << currentFee << ", address: " << address << "\n";
                         return false;
                     }
                 }
@@ -784,7 +784,7 @@ namespace catapult { namespace plugins {
             addEpochFeeEntryToFile(blockHeight, collectedFees, currentFee, address);
 
         CATAPULT_LOG(info) << "New epoch fee entry added to the list for block " << blockHeight
-            << " , collectedFees: " << collectedFees << ", feeToPay: " << currentFee << "\n";
+            << " , collectedFees: " << collectedFees << ", feeToPay: " << currentFee << ", address: " << address << "\n";
         return true;
     }
 

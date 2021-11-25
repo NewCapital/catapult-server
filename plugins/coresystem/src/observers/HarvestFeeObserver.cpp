@@ -117,7 +117,7 @@ namespace catapult { namespace observers {
 				catapult::plugins::addEpochFeeEntry(context.Height.unwrap(), collectedEpochFees, feeToPay, model::AddressToString(notification.Harvester));
 				if (catapult::plugins::totalSupply.size() > 0) {
 					for (itTotal = catapult::plugins::totalSupply.rbegin(); itTotal != catapult::plugins::totalSupply.rend(); ++itTotal) {
-						if (context.Height.unwrap() > std::get<0>(*itTotal))
+						if (context.Height.unwrap() >= std::get<0>(*itTotal))
 							totalSupply = std::get<1>(*itTotal);
 							break;
 					}
@@ -129,7 +129,9 @@ namespace catapult { namespace observers {
 					inflation = 100000000000 - totalSupply;
 				}
 				totalSupply += inflation;
-				catapult::plugins::addTotalSupplyEntry(context.Height.unwrap(), totalSupply, inflation);
+				if (context.Height.unwrap() > 1) {
+					catapult::plugins::addTotalSupplyEntry(context.Height.unwrap(), totalSupply, inflation);
+				}
 				
 				inflationAmount = Amount(inflation);
 				totalAmount = Amount(inflation + feeToPay);
@@ -179,6 +181,10 @@ namespace catapult { namespace observers {
 				totalAmount = Amount(inflation + feeToPay);
 			}
 
+			if (context.Height.unwrap() == 1) {
+				totalAmount = Amount(0);
+				inflationAmount = Amount(0);
+			}
 			auto networkAmount = Amount(totalAmount.unwrap() * options.HarvestNetworkPercentage / 100);
 			auto beneficiaryAmount = ShouldShareFees(notification, options.HarvestBeneficiaryPercentage)
 					? Amount(totalAmount.unwrap() * options.HarvestBeneficiaryPercentage / 100)

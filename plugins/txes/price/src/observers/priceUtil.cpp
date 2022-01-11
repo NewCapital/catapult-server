@@ -51,11 +51,11 @@ namespace catapult { namespace plugins {
     uint64_t feeToPay = 0;
 
     uint64_t initialSupply = 0;
-    std::string pricePublisherPublicKey = "";
+    NODESTROY std::string pricePublisherPublicKey = "";
     uint64_t feeRecalculationFrequency = 0;
     uint64_t multiplierRecalculationFrequency = 0;
     uint64_t pricePeriodBlocks = 0;
-    std::string networkIdentifier = "";
+    NODESTROY std::string networkIdentifier = "";
 
     //region block_reward
 

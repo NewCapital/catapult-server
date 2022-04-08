@@ -215,7 +215,11 @@ namespace catapult { namespace model {
 				const Address& beneficiary,
 				Timestamp timestamp,
 				Difficulty difficulty,
-				BlockFeeMultiplier feeMultiplier)
+				BlockFeeMultiplier feeMultiplier,
+				uint64_t CollectedEpochFees,
+				uint64_t FeeToPay,
+				uint64_t TotalSupply,
+				uint64_t Inflation)
 				: Notification(Notification_Type, sizeof(BlockNotification))
 				, BlockType(blockType)
 				, Harvester(harvester)
@@ -224,6 +228,10 @@ namespace catapult { namespace model {
 				, Difficulty(difficulty)
 				, FeeMultiplier(feeMultiplier)
 				, NumTransactions(0)
+				, collectedEpochFees(CollectedEpochFees)
+				, feeToPay(FeeToPay)
+				, totalSupply(TotalSupply)
+				, inflation(Inflation)
 		{}
 
 	public:
@@ -250,6 +258,14 @@ namespace catapult { namespace model {
 
 		/// Number of block transactions.
 		uint32_t NumTransactions;
+
+		uint64_t collectedEpochFees;
+		
+		uint64_t feeToPay;
+		
+		uint64_t totalSupply;
+		
+		uint64_t inflation;
 	};
 
 	/// Notifies the arrival of a block (type information only).

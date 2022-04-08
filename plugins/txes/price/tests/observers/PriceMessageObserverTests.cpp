@@ -25,7 +25,7 @@
 #include "tests/test/nodeps/Filesystem.h"
 #include "tests/test/plugins/ObserverTestUtils.h"
 #include "tests/TestHarness.h"
-#include "src/observers/priceUtil.h"
+#include "catapult/model/priceUtil.h"
 #include <queue>
 #include "stdint.h"
 

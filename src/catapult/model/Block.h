@@ -68,6 +68,14 @@ namespace catapult { namespace model {
 
 		/// Fee multiplier applied to block transactions.
 		BlockFeeMultiplier FeeMultiplier;
+
+		uint64_t collectedEpochFees;
+		
+		uint64_t feeToPay;
+
+		uint64_t totalSupply;
+		
+		uint64_t inflation;
 	};
 
 	/// Binary layout for a padded block footer.

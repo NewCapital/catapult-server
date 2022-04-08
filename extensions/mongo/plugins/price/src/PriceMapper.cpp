@@ -19,29 +19,24 @@
 *** along with Catapult. If not, see <http://www.gnu.org/licenses/>.
 **/
 
-#include "Observers.h"
-#include "catapult/config/CatapultDataDirectory.h"
-#include "catapult/io/FileQueue.h"
-#include "catapult/io/PodIoUtils.h"
-#include "catapult/model/priceUtil.h"
-#include "src/catapult/model/NetworkIdentifier.h"
-#include "src/catapult/model/Address.h"
+#include "PriceMapper.h"
+#include "mongo/src/MongoTransactionPluginFactory.h"
+#include "mongo/src/mappers/MapperUtils.h"
+#include "plugins/txes/price/src/model/PriceTransaction.h"
 
-namespace catapult { namespace observers {
+using namespace catapult::mongo::mappers;
+
+namespace catapult { namespace mongo { namespace plugins {
 
 	namespace {
-		using Notification = model::PriceMessageNotification;
+		template<typename TTransaction>
+		void StreamTransaction(bson_stream::document& builder, const TTransaction& transaction) {
+			builder
+					<< "Block height" << int64_t(transaction.blockHeight)
+					<< "Low price" << int64_t(transaction.lowPrice)
+					<< "High price" << int64_t(transaction.highPrice);
+		}
 	}
 
-	DEFINE_OBSERVER(PriceMessage, Notification, [](
-		const Notification& notification,
-		const ObserverContext& context) {
-
-		std::string senderKeyString(reinterpret_cast<const char*>(notification.SenderPublicKey.data()), sizeof(notification.SenderPublicKey.data()));
-
-		if (senderKeyString == plugins::pricePublisherPublicKey) {
-			catapult::plugins::processPriceTransaction(notification.blockHeight, notification.lowPrice,
-				notification.highPrice, context.Mode == NotifyMode::Rollback);
-		}
-	})
-}}
+	DEFINE_MONGO_TRANSACTION_PLUGIN_FACTORY(Price, StreamTransaction)
+}}}

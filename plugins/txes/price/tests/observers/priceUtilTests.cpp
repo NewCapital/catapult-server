@@ -19,7 +19,7 @@
 *** along with Catapult. If not, see <http://www.gnu.org/licenses/>.
 **/
 
-#include "plugins/txes/price/src/observers/priceUtil.h"
+#include "catapult/model/priceUtil.h"
 #include "tests/TestHarness.h"
 #include "stdint.h"
 #include <deque>

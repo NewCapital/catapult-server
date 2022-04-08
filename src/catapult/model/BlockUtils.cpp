@@ -162,7 +162,43 @@ namespace catapult { namespace model {
 
 			// append all the transactions
 			auto* pDestination = reinterpret_cast<uint8_t*>(pBlock->TransactionsPtr());
-			CopyTransactions(pDestination, transactions);
+			CopyTransactions(pDestination, transactions);	
+			uint64_t inflation;
+			double multiplier;
+			
+			catapult::plugins::priceMutex.lock();
+			if (catapult::plugins::initialSupply == 0) {
+				catapult::plugins::readConfig();
+				catapult::plugins::loadPricesFromFile(context.BlockHeight.unwrap());
+			}
+
+			if (context.BlockHeight.unwrap() == 1) {
+				pBlock->totalSupply = catapult::plugins::initialSupply;
+			} else {
+				pBlock->totalSupply = context.totalSupply;
+			}
+			multiplier = catapult::plugins::getCoinGenerationMultiplier(context.BlockHeight.unwrap() + 1);
+			catapult::plugins::priceMutex.unlock();
+			inflation = static_cast<uint64_t>(static_cast<double>(pBlock->totalSupply) * multiplier / 210240000 /* 365 * 24 * 60 * 2 * 100 * 2 */ + 0.5);
+			if (context.totalSupply + inflation > catapult::plugins::generationCeiling) {
+				inflation = catapult::plugins::generationCeiling - context.totalSupply;
+			}
+			pBlock->totalSupply += inflation;
+			pBlock->inflation = inflation;
+
+			CATAPULT_LOG(error) << "BLOCK HEIGHT: " << context.BlockHeight.unwrap() + 1;
+			if (context.BlockHeight.unwrap() % catapult::plugins::feeRecalculationFrequency == 0) {
+				CATAPULT_LOG(error) << "TIME TO RECALCULATE FEE TO PAY ";
+				CATAPULT_LOG(error) << "Context collected: " << context.collectedEpochFees;
+				pBlock->feeToPay = static_cast<unsigned int>(static_cast<double>(context.collectedEpochFees) / static_cast<double>(catapult::plugins::feeRecalculationFrequency) + 0.5);
+				pBlock->collectedEpochFees = 0;
+				CATAPULT_LOG(error) << "New Fee to pay: " << pBlock->feeToPay;
+			} else {
+				CATAPULT_LOG(error) << "Context feeToPay: " << context.feeToPay;
+				CATAPULT_LOG(error) << "Context collected: " << context.collectedEpochFees;
+				pBlock->feeToPay = context.feeToPay;
+				pBlock->collectedEpochFees = context.collectedEpochFees;
+			}
 			return pBlock;
 		}
 	}
@@ -190,6 +226,15 @@ namespace catapult { namespace model {
 		// append all the transactions
 		auto* pDestination = reinterpret_cast<uint8_t*>(pBlock->TransactionsPtr());
 		CopyTransactions(pDestination, transactions);
+		
+		CATAPULT_LOG(error) << "Stitching, BLOCK HEIGHT: " << blockHeader.Height.unwrap();
+		auto info = CalculateBlockTransactionsInfo(*pBlock);
+		if ((blockHeader.Height.unwrap() - 1) % catapult::plugins::feeRecalculationFrequency == 0) {
+			pBlock->collectedEpochFees = info.TotalFee.unwrap();
+		} else {
+			pBlock->collectedEpochFees += info.TotalFee.unwrap();
+		}
+		CATAPULT_LOG(error) << "After stitching, collectedEpochFees: " << pBlock->collectedEpochFees;
 		return pBlock;
 	}
 

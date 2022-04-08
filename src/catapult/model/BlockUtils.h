@@ -23,6 +23,7 @@
 #include "Block.h"
 #include "Elements.h"
 #include "EntityInfo.h"
+#include "priceUtil.h"
 
 namespace catapult { namespace model {
 
@@ -92,7 +93,12 @@ namespace catapult { namespace model {
 				, GenerationHash()
 				, BlockHeight(0)
 				, Timestamp(0)
-		{}
+		{
+			collectedEpochFees = 0;
+			feeToPay = 0;
+			totalSupply = 0;
+			inflation = 0;
+		}
 
 		/// Creates a context with \a blockElement as the previous block.
 		explicit PreviousBlockContext(const BlockElement& blockElement)
@@ -100,7 +106,12 @@ namespace catapult { namespace model {
 				, GenerationHash(blockElement.GenerationHash)
 				, BlockHeight(blockElement.Block.Height)
 				, Timestamp(blockElement.Block.Timestamp)
-		{}
+		{
+			collectedEpochFees = blockElement.Block.collectedEpochFees;
+			feeToPay = blockElement.Block.feeToPay;
+			totalSupply = blockElement.Block.totalSupply;
+			inflation = blockElement.Block.inflation;
+		}
 
 		/// Hash of previous block.
 		Hash256 BlockHash;
@@ -113,6 +124,14 @@ namespace catapult { namespace model {
 
 		/// Timestamp of previous block.
 		catapult::Timestamp Timestamp;
+
+		uint64_t collectedEpochFees;
+
+		uint64_t feeToPay;
+
+		uint64_t totalSupply;
+
+		uint64_t inflation;
 	};
 
 	/// Creates an unsigned Block with \a blockType given \a context, signer public key (\a signerPublicKey) and \a transactions

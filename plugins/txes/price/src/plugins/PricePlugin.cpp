@@ -28,7 +28,7 @@
 #include "catapult/crypto/OpensslKeyUtils.h"
 #include "catapult/model/Address.h"
 #include "catapult/plugins/PluginManager.h"
-#include "src/observers/priceUtil.h"
+#include "catapult/model/priceUtil.h"
 #include "src/config/PriceConfiguration.h"
 #include <string>
 

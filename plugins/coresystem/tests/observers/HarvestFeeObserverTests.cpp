@@ -28,7 +28,7 @@
 #include "tests/test/plugins/AccountObserverTestContext.h"
 #include "tests/test/plugins/ObserverTestUtils.h"
 #include "tests/TestHarness.h"
-#include "plugins/txes/price/src/observers/priceUtil.h"
+#include "catapult/model/priceUtil.h"
 
 namespace catapult { namespace observers {
 

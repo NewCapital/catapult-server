@@ -3,8 +3,8 @@
 #include "stdint.h"
 #include "catapult/types.h"
 #include <string>
-#include "src/catapult/cache_db/RocksDatabase.h"
-#include "src/catapult/cache_db/RocksInclude.h"
+#include "catapult/cache_db/RocksDatabase.h"
+#include "catapult/cache_db/RocksInclude.h"
 #include <mutex>
 
 #ifdef __APPLE__
@@ -17,15 +17,6 @@ namespace catapult {
 	namespace plugins {
 
         extern std::mutex priceMutex;
-
-        // block height, low price and high price
-		extern std::deque<std::tuple<uint64_t, uint64_t, uint64_t, double>> priceList;
-        
-        // block height, total supply and increase in total supply of the current block
-		extern std::deque<std::tuple<uint64_t, uint64_t, uint64_t>> totalSupply;
-
-        // block height, collected fees this epoch and fees paid for a block (average block fee last epoch)
-		extern std::deque<std::tuple<uint64_t, uint64_t, uint64_t, std::string>> epochFees;
 
         extern double currentMultiplier;
         extern uint64_t feeToPay; // fee to pay this epoch
@@ -51,16 +42,6 @@ namespace catapult {
         // max number of coins
         extern uint64_t generationCeiling;
 
-        extern const std::string supplyDirectory;
-        extern std::vector<std::string> supplyFields;
-        extern cache::RocksDatabaseSettings supplySettings;
-        extern std::unique_ptr<cache::RocksDatabase> supplyDB;
-
-        extern const std::string feesDirectory;
-        extern std::vector<std::string> feesFields;
-        extern cache::RocksDatabaseSettings feesSettings;
-        extern std::unique_ptr<cache::RocksDatabase> feesDB;
-        
         extern const std::string priceDirectory;
         extern std::vector<std::string> priceFields;
         extern cache::RocksDatabaseSettings priceSettings;

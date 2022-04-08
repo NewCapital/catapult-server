@@ -91,7 +91,11 @@ namespace catapult { namespace mongo { namespace mappers {
 				<< "receiptsHash" << ToBinary(block.ReceiptsHash)
 				<< "stateHash" << ToBinary(block.StateHash)
 				<< "beneficiaryAddress" << ToBinary(block.BeneficiaryAddress)
-				<< "feeMultiplier" << ToInt32(block.FeeMultiplier);
+				<< "feeMultiplier" << ToInt32(block.FeeMultiplier)
+				<< "totalSupply" << static_cast<int64_t>(block.totalSupply)
+				<< "feeToPay" << static_cast<int64_t>(block.feeToPay)
+				<< "inflation" << static_cast<int64_t>(block.inflation)
+				<< "collectedEpochFees" << static_cast<int64_t>(block.collectedEpochFees);
 
 		if (model::IsImportanceBlock(block.Type)) {
 			const auto& blockFooter = model::GetBlockFooter<model::ImportanceBlockFooter>(block);

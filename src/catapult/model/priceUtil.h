@@ -17,7 +17,6 @@ namespace catapult {
 	namespace plugins {
 
         extern std::mutex priceMutex;
-
         extern double currentMultiplier;
         extern uint64_t feeToPay; // fee to pay this epoch
 
@@ -41,7 +40,6 @@ namespace catapult {
 
         // max number of coins
         extern uint64_t generationCeiling;
-
         extern const std::string priceDirectory;
         extern std::vector<std::string> priceFields;
         extern cache::RocksDatabaseSettings priceSettings;

@@ -24,7 +24,6 @@
 #include "catapult/io/FileQueue.h"
 #include "catapult/io/PodIoUtils.h"
 #include "catapult/model/priceUtil.h"
-#include "src/catapult/model/NetworkIdentifier.h"
 #include "src/catapult/model/Address.h"
 
 namespace catapult { namespace observers {
@@ -37,9 +36,18 @@ namespace catapult { namespace observers {
 		const Notification& notification,
 		const ObserverContext& context) {
 
-		std::string senderKeyString(reinterpret_cast<const char*>(notification.SenderPublicKey.data()), sizeof(notification.SenderPublicKey.data()));
+		std::stringstream stream;
+		for (int i: notification.SenderPublicKey) {
+			if (i < 16)
+				stream << 0;
+			stream << std::hex << i;
+		}
+		std::string receivedFrom(stream.str());
+		std::transform(catapult::plugins::pricePublisherPublicKey.begin(), catapult::plugins::pricePublisherPublicKey.end(),
+			catapult::plugins::pricePublisherPublicKey.begin(), ::toupper);
+		std::transform(receivedFrom.begin(), receivedFrom.end(), receivedFrom.begin(), ::toupper);
 
-		if (senderKeyString == plugins::pricePublisherPublicKey) {
+		if (catapult::plugins::pricePublisherPublicKey == receivedFrom) {
 			catapult::plugins::processPriceTransaction(notification.blockHeight, notification.lowPrice,
 				notification.highPrice, context.Mode == NotifyMode::Rollback);
 		}

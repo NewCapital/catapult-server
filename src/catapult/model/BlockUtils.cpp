@@ -177,7 +177,8 @@ namespace catapult { namespace model {
 			} else {
 				pBlock->totalSupply = context.totalSupply;
 			}
-			multiplier = catapult::plugins::getCoinGenerationMultiplier(context.BlockHeight.unwrap() + 1);
+			CATAPULT_LOG(error) << "BLOCK HEIGHT1: " << context.BlockHeight.unwrap() + 1;
+			multiplier = catapult::plugins::getCoinGenerationMultiplier(context.BlockHeight.unwrap() + 2);
 			catapult::plugins::priceMutex.unlock();
 			inflation = static_cast<uint64_t>(static_cast<double>(pBlock->totalSupply) * multiplier / 210240000 /* 365 * 24 * 60 * 2 * 100 * 2 */ + 0.5);
 			if (context.totalSupply + inflation > catapult::plugins::generationCeiling) {
@@ -186,7 +187,7 @@ namespace catapult { namespace model {
 			pBlock->totalSupply += inflation;
 			pBlock->inflation = inflation;
 
-			CATAPULT_LOG(error) << "BLOCK HEIGHT: " << context.BlockHeight.unwrap() + 1;
+			CATAPULT_LOG(error) << "BLOCK HEIGHT2: " << context.BlockHeight.unwrap() + 1;
 			if (context.BlockHeight.unwrap() % catapult::plugins::feeRecalculationFrequency == 0) {
 				CATAPULT_LOG(error) << "TIME TO RECALCULATE FEE TO PAY ";
 				CATAPULT_LOG(error) << "Context collected: " << context.collectedEpochFees;

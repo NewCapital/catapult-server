@@ -162,7 +162,7 @@ namespace catapult { namespace model {
 
 			// append all the transactions
 			auto* pDestination = reinterpret_cast<uint8_t*>(pBlock->TransactionsPtr());
-			CopyTransactions(pDestination, transactions);	
+			CopyTransactions(pDestination, transactions);
 			uint64_t inflation;
 			double multiplier;
 			

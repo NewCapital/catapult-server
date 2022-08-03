@@ -114,7 +114,7 @@ namespace catapult { namespace plugins {
                     break;
                 }
             }
-        }        
+        }
         return number;
     }
 
@@ -135,14 +135,17 @@ namespace catapult { namespace plugins {
         }
         double average30 = 0, average60 = 0, average90 = 0, average120 = 0;
         getAverage(blockHeight, average30, average60, average90, average120);
-        if ( areSame(average60, 0) ) { // either it hasn't been long enough or data is missing
+        if (areSame(average60, 0)) { // either it hasn't been long enough or data is missing
             currentMultiplier = 1;
             return 1;
         }
         double increase30 = average30 / average60;
         double increase60 = areSame(average90, 0) ? 0 : average60 / average90;
         double increase90 = areSame(average120, 0) ? 0 : average90 / average120;
+        CATAPULT_LOG(error) << "Increase 30: " << increase30 << ", incrase 60: " << increase60 << ", increase 90: " << increase90 << "\n";
+        CATAPULT_LOG(error) << "Get multiplier: " << getMultiplier(increase30, increase60, increase90) << "\n";
         currentMultiplier = approximate(currentMultiplier * getMultiplier(increase30, increase60, increase90));
+        CATAPULT_LOG(error) << "Current multiplier: " << currentMultiplier << "\n";
         return currentMultiplier;
     }
 
@@ -189,6 +192,7 @@ namespace catapult { namespace plugins {
             else if (min >= 1.05)
                 return approximate(1 + (0.025 + (min - 1.05) * 0.35) / static_cast<double>(pricePeriodsPerYear));
         }
+        currentMultiplier = 1;
         return 1;
     }
 
@@ -250,12 +254,12 @@ namespace catapult { namespace plugins {
         double *averagePtr = &average30;
         std::deque<std::tuple<uint64_t, uint64_t, uint64_t, double>>::reverse_iterator it;
         for (it = priceList.rbegin(); it != priceList.rend(); ++it) {
-            if (std::get<0>(*it) >= blockHeight || std::get<0>(*it) == prevBlock) {
+            if (std::get<0>(*it) > blockHeight || std::get<0>(*it) == prevBlock) {
                 continue;
             }
             prevBlock = std::get<0>(*it);
             
-            if (std::get<0>(*it) <= blockHeight - 1u - boundary && blockHeight > boundary) {
+            if (std::get<0>(*it) <= blockHeight - boundary && blockHeight > boundary) {
                 if (averagePtr == &average30) {
                     averagePtr = &average60;
                     if (count > 0)
@@ -512,6 +516,7 @@ namespace catapult { namespace plugins {
             result.storage().clear();
             key++;
         }
+        currentMultiplier = std::stod(values[2]);
     }
 
     //endregion price_helper

@@ -142,6 +142,9 @@ namespace catapult { namespace plugins {
         double increase30 = average30 / average60;
         double increase60 = areSame(average90, 0) ? 0 : average60 / average90;
         double increase90 = areSame(average120, 0) ? 0 : average90 / average120;
+        CATAPULT_LOG(error) << "Increase 30: " << increase30 << ", incrase 60: " << increase60 << ", increase 90: " << increase90 << "\n";
+        CATAPULT_LOG(error) << "Get multiplier: " << getMultiplier(increase30, increase60, increase90) << "\n";
+        CATAPULT_LOG(error) << "Current multiplier: " << currentMultiplier << "\n";
         currentMultiplier = approximate(currentMultiplier * getMultiplier(increase30, increase60, increase90));
         return currentMultiplier;
     }

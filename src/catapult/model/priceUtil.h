@@ -49,7 +49,7 @@ namespace catapult {
         void configToFile();
         void readConfig();
         double approximate(double number);
-        double getCoinGenerationMultiplier(uint64_t blockHeight, bool rollback = false);
+        double getCoinGenerationMultiplier(uint64_t blockHeight, bool update = false, bool rollback = false);
         double getMultiplier(double increase30, double increase60, double increase90);
         uint64_t getFeeToPay(uint64_t blockHeight, uint64_t *collectedFees, bool rollback = false, std::string beneficiary = "");
         void getAverage(uint64_t blockHeight, double &average30, double &average60, double &average90, 

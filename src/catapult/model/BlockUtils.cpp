@@ -178,7 +178,7 @@ namespace catapult { namespace model {
 				pBlock->totalSupply = context.totalSupply;
 			}
 			CATAPULT_LOG(error) << "BLOCK HEIGHT1: " << context.BlockHeight.unwrap() + 1;
-			multiplier = catapult::plugins::getCoinGenerationMultiplier(context.BlockHeight.unwrap() + 2);
+			multiplier = catapult::plugins::getCoinGenerationMultiplier(context.BlockHeight.unwrap() + 1, false);
 			catapult::plugins::priceMutex.unlock();
 			inflation = static_cast<uint64_t>(static_cast<double>(pBlock->totalSupply) * multiplier / 52560000 /* 365 * 24 * 60 * 2 * 100 / 2 */ + 0.5);
 			if (context.totalSupply + inflation > catapult::plugins::generationCeiling) {

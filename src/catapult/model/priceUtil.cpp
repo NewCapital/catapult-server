@@ -118,10 +118,13 @@ namespace catapult { namespace plugins {
         return number;
     }
 
-    double getCoinGenerationMultiplier(uint64_t blockHeight, bool rollback) {
-        if (blockHeight % multiplierRecalculationFrequency > 0 && !areSame(currentMultiplier, 0) && !rollback) {
+    double getCoinGenerationMultiplier(uint64_t blockHeight, bool update, bool rollback) {
+        if (!update && !areSame(currentMultiplier, 0) && !rollback) {
             return currentMultiplier;
         }
+        /*if (blockHeight % multiplierRecalculationFrequency > 0 && !areSame(currentMultiplier, 0) && !rollback) {
+            return currentMultiplier;
+        }*/
         else if (areSame(currentMultiplier, 0)) {
             currentMultiplier = 1;
         }
@@ -254,12 +257,12 @@ namespace catapult { namespace plugins {
         double *averagePtr = &average30;
         std::deque<std::tuple<uint64_t, uint64_t, uint64_t, double>>::reverse_iterator it;
         for (it = priceList.rbegin(); it != priceList.rend(); ++it) {
-            if (std::get<0>(*it) > blockHeight || std::get<0>(*it) == prevBlock) {
+            if (std::get<0>(*it) >= blockHeight || std::get<0>(*it) == prevBlock) {
                 continue;
             }
             prevBlock = std::get<0>(*it);
             
-            if (std::get<0>(*it) <= blockHeight - boundary && blockHeight > boundary) {
+            if (std::get<0>(*it) <= blockHeight - 1 - boundary && blockHeight > boundary) {
                 if (averagePtr == &average30) {
                     averagePtr = &average60;
                     if (count > 0)
@@ -303,7 +306,7 @@ namespace catapult { namespace plugins {
     }
 
     void processPriceTransaction(uint64_t blockHeight, uint64_t lowPrice, uint64_t highPrice, bool rollback) {
-        double multiplier = getCoinGenerationMultiplier(blockHeight);
+        double multiplier = getCoinGenerationMultiplier(blockHeight, false);
         if (rollback) {
         	std::deque<std::tuple<uint64_t, uint64_t, uint64_t, double>>::reverse_iterator it;
 			for (it = priceList.rbegin(); it != priceList.rend(); ++it) {
@@ -323,6 +326,7 @@ namespace catapult { namespace plugins {
 			return;
 		}
 		catapult::plugins::addPrice(blockHeight, lowPrice, highPrice, multiplier);
+        getCoinGenerationMultiplier(blockHeight, true);
     }
     
     //endregion block_reward
@@ -366,7 +370,7 @@ namespace catapult { namespace plugins {
         if (priceList.size() > 0) {
             previousTransactionHeight = std::get<0>(priceList.back());
             if (previousTransactionHeight == blockHeight && std::get<1>(priceList.back()) == lowPrice &&
-                std::get<2>(priceList.back()) == highPrice && areSame(std::get<3>(priceList.back()), multiplier)) {
+                std::get<2>(priceList.back()) == highPrice) {
                 // data matches, so must be a duplicate, however, no need to resynchronise prices
                 CATAPULT_LOG(warning) << "Warning: price transaction data is equal to the previous price transaction data: "
                     << "block height: " << blockHeight << ", lowPrice: " << lowPrice << ", highPrice: " << highPrice << "\n";

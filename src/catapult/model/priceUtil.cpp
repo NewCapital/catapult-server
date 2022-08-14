@@ -257,11 +257,10 @@ namespace catapult { namespace plugins {
         double *averagePtr = &average30;
         std::deque<std::tuple<uint64_t, uint64_t, uint64_t, double>>::reverse_iterator it;
         for (it = priceList.rbegin(); it != priceList.rend(); ++it) {
-            if (std::get<0>(*it) >= blockHeight || std::get<0>(*it) == prevBlock) {
+            if (std::get<0>(*it) > blockHeight || std::get<0>(*it) == prevBlock) {
                 continue;
             }
             prevBlock = std::get<0>(*it);
-            
             if (std::get<0>(*it) <= blockHeight - 1 - boundary && blockHeight > boundary) {
                 if (averagePtr == &average30) {
                     averagePtr = &average60;

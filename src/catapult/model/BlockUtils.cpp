@@ -164,40 +164,40 @@ namespace catapult { namespace model {
 			auto* pDestination = reinterpret_cast<uint8_t*>(pBlock->TransactionsPtr());
 			CopyTransactions(pDestination, transactions);
 			uint64_t inflation;
-			double multiplier;
 			
-			catapult::plugins::priceMutex.lock();
 			if (catapult::plugins::initialSupply == 0) {
 				catapult::plugins::readConfig();
 			}
-			catapult::plugins::priceList.clear();
-			catapult::plugins::loadPricesFromFile(context.BlockHeight.unwrap());
 
 			if (context.BlockHeight.unwrap() == 1) {
 				pBlock->totalSupply = catapult::plugins::initialSupply;
+				pBlock->inflationMultiplier = 1;
 			} else {
 				pBlock->totalSupply = context.totalSupply;
+				pBlock->inflationMultiplier = context.inflationMultiplier;
 			}
-			CATAPULT_LOG(error) << "BLOCK HEIGHT1: " << context.BlockHeight.unwrap() + 1;
-			multiplier = catapult::plugins::getCoinGenerationMultiplier(context.BlockHeight.unwrap() + 1, false);
-			catapult::plugins::priceMutex.unlock();
-			inflation = static_cast<uint64_t>(static_cast<double>(pBlock->totalSupply) * multiplier / 52560000 /* 365 * 24 * 60 * 2 * 100 / 2 */ + 0.5);
+			if ((context.BlockHeight.unwrap()) % catapult::plugins::multiplierRecalculationFrequency == 0) {
+				CATAPULT_LOG(error) << "BLOCK HEIGHT (RECALCULATION): " << context.BlockHeight.unwrap() + 1;
+				catapult::plugins::priceList.clear();
+				catapult::plugins::loadPricesFromFile(context.BlockHeight.unwrap());
+				pBlock->inflationMultiplier = pBlock->inflationMultiplier * catapult::plugins::getCoinGenerationMultiplier(context.BlockHeight.unwrap() + 1);
+				if (catapult::plugins::areSame(pBlock->inflationMultiplier, 0)) {
+					pBlock->inflationMultiplier = 1;
+					CATAPULT_LOG(error) << "RESET: " << context.BlockHeight.unwrap() + 1;
+				}
+				CATAPULT_LOG(error) << "MULTIPLIER BLOCK UTILS: " << pBlock->inflationMultiplier;
+			}
+			inflation = static_cast<uint64_t>(static_cast<double>(pBlock->totalSupply) * pBlock->inflationMultiplier / 52560000 /* 365 * 24 * 60 * 2 * 100 / 2 */ + 0.5);
 			if (context.totalSupply + inflation > catapult::plugins::generationCeiling) {
 				inflation = catapult::plugins::generationCeiling - context.totalSupply;
 			}
 			pBlock->totalSupply += inflation;
 			pBlock->inflation = inflation;
 
-			CATAPULT_LOG(error) << "BLOCK HEIGHT2: " << context.BlockHeight.unwrap() + 1;
 			if (context.BlockHeight.unwrap() % catapult::plugins::feeRecalculationFrequency == 0) {
-				CATAPULT_LOG(error) << "TIME TO RECALCULATE FEE TO PAY ";
-				CATAPULT_LOG(error) << "Context collected: " << context.collectedEpochFees;
 				pBlock->feeToPay = static_cast<unsigned int>(static_cast<double>(context.collectedEpochFees) / static_cast<double>(catapult::plugins::feeRecalculationFrequency) + 0.5);
 				pBlock->collectedEpochFees = 0;
-				CATAPULT_LOG(error) << "New Fee to pay: " << pBlock->feeToPay;
 			} else {
-				CATAPULT_LOG(error) << "Context feeToPay: " << context.feeToPay;
-				CATAPULT_LOG(error) << "Context collected: " << context.collectedEpochFees;
 				pBlock->feeToPay = context.feeToPay;
 				pBlock->collectedEpochFees = context.collectedEpochFees;
 			}

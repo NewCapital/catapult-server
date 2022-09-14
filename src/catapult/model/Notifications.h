@@ -219,7 +219,8 @@ namespace catapult { namespace model {
 				uint64_t CollectedEpochFees,
 				uint64_t FeeToPay,
 				uint64_t TotalSupply,
-				uint64_t Inflation)
+				uint64_t Inflation,
+				double InflationMultiplier)
 				: Notification(Notification_Type, sizeof(BlockNotification))
 				, BlockType(blockType)
 				, Harvester(harvester)
@@ -232,6 +233,7 @@ namespace catapult { namespace model {
 				, feeToPay(FeeToPay)
 				, totalSupply(TotalSupply)
 				, inflation(Inflation)
+				, inflationMultiplier(InflationMultiplier)
 		{}
 
 	public:
@@ -266,6 +268,8 @@ namespace catapult { namespace model {
 		uint64_t totalSupply;
 		
 		uint64_t inflation;
+
+		double inflationMultiplier;
 	};
 
 	/// Notifies the arrival of a block (type information only).

@@ -13,31 +13,15 @@
 #include "src/catapult/io/FileBlockStorage.h"
 #include "src/catapult/model/Elements.h"
 
-#define PRICE_DATA_SIZE 4
-#define SUPPLY_DATA_SIZE 3
-#define EPOCH_FEES_DATA_SIZE 4
+#define PRICE_DATA_SIZE 3
 
 #ifdef __USE_GNU
 typedef int errno_t;
 #endif
 
-static bool areSame(double a, double b) {
-    return abs(a - b) < std::numeric_limits<double>::epsilon();
-}
-
 namespace catapult { namespace plugins {
 
-    /**
-     *  wowazzz: bad case using global variables
-     *  types std::string and std::deque
-     *  (Clang compiler error)
-     *  -Wglobal-constructors -Wexit-time-destructors
-     */
-    NODESTROY std::deque<std::tuple<uint64_t, uint64_t, uint64_t, double>> priceList;
-    NODESTROY std::deque<std::tuple<uint64_t, uint64_t, uint64_t>> totalSupply;
-    NODESTROY std::deque<std::tuple<uint64_t, uint64_t, uint64_t, std::string>> epochFees;
-    double currentMultiplier = 1;
-    uint64_t feeToPay = 0;
+    NODESTROY std::deque<std::tuple<uint64_t, uint64_t, uint64_t>> priceList;
 
     uint64_t initialSupply = 0;
     std::string pricePublisherPublicKey = "";
@@ -46,13 +30,16 @@ namespace catapult { namespace plugins {
     uint64_t pricePeriodBlocks = 0;
     uint64_t entryLifetime = 0;
     uint64_t generationCeiling = 0;
-    std::mutex priceMutex;
     
     const std::string priceDirectory = "./data/price";
     std::vector<std::string> priceFields {"default"};
     cache::RocksDatabaseSettings priceSettings(priceDirectory, priceFields, cache::FilterPruningMode::Disabled);
 
     //region block_reward
+    
+    bool areSame(double a, double b) {
+        return abs(a - b) < std::numeric_limits<double>::epsilon();
+    }
 
     void readConfig() {
         std::string line;
@@ -93,23 +80,13 @@ namespace catapult { namespace plugins {
     double approximate(double number) {
         if (number > pow(10, 10)) {
             // if there are more than 10 digits before the decimal point, ignore the decimal digits
-            /**
-             * wowazzz: Is that simple round() ??
-             * 
-             * number = (double)(static_cast<uint64_t>(number + 0.5));
-             */
-            number = round(number);
+            number = (double)(static_cast<uint64_t>(number + 0.5));
         } else {
             for (int i = 0; i < 10; ++i) {
                 if (pow(10, i + 1) > number) { // i + 1 digits left to the decimal point
                     if (i < 4)
                         i = 4;
-                    /**
-                     * wowazzz: Is that simple round() ??
-                     * 
-                     * number = (double)(static_cast<uint64_t>(number * pow(10, 9 - i) + 0.5)) / pow(10, 9 - i);
-                     */
-                    number = round(number * pow(10, 9 - i)) / pow(10, 9 - i);
+                    number = (double)(static_cast<uint64_t>(number * pow(10, 9 - i) + 0.5)) / pow(10, 9 - i);
                     break;
                 }
             }
@@ -117,38 +94,18 @@ namespace catapult { namespace plugins {
         return number;
     }
 
-    double getCoinGenerationMultiplier(uint64_t blockHeight, bool update, bool rollback) {
-        if (!update && !areSame(currentMultiplier, 0) && !rollback) {
-            return currentMultiplier;
-        }
-        /*if (blockHeight % multiplierRecalculationFrequency > 0 && !areSame(currentMultiplier, 0) && !rollback) {
-            return currentMultiplier;
-        }*/
-        else if (areSame(currentMultiplier, 0)) {
-            currentMultiplier = 1;
-        }
-        if (rollback) {
-            std::deque<std::tuple<uint64_t, uint64_t, uint64_t, double>>::reverse_iterator it;
-            for (it = priceList.rbegin(); it != priceList.rend(); ++it) {
-                if (blockHeight == std::get<0>(*it)) {
-                    return std::get<3>(*it);
-                }
-            }
-        }
+    double getCoinGenerationMultiplier(uint64_t blockHeight) {
         double average30 = 0, average60 = 0, average90 = 0, average120 = 0;
         getAverage(blockHeight, average30, average60, average90, average120);
         if (areSame(average60, 0)) { // either it hasn't been long enough or data is missing
-            currentMultiplier = 1;
-            return 1;
+            return 0;
         }
         double increase30 = average30 / average60;
         double increase60 = areSame(average90, 0) ? 0 : average60 / average90;
         double increase90 = areSame(average120, 0) ? 0 : average90 / average120;
         CATAPULT_LOG(error) << "Increase 30: " << increase30 << ", incrase 60: " << increase60 << ", increase 90: " << increase90 << "\n";
         CATAPULT_LOG(error) << "Get multiplier: " << getMultiplier(increase30, increase60, increase90) << "\n";
-        currentMultiplier = approximate(currentMultiplier * getMultiplier(increase30, increase60, increase90));
-        CATAPULT_LOG(error) << "Current multiplier: " << currentMultiplier << "\n";
-        return currentMultiplier;
+        return getMultiplier(increase30, increase60, increase90);
     }
 
     double getMultiplier(double increase30, double increase60, double increase90) {
@@ -194,52 +151,7 @@ namespace catapult { namespace plugins {
             else if (min >= 1.05)
                 return approximate(1 + (0.025 + (min - 1.05) * 0.35) / static_cast<double>(pricePeriodsPerYear));
         }
-        currentMultiplier = 1;
-        return 1;
-    }
-
-    uint64_t getFeeToPay(uint64_t blockHeight, uint64_t *collectedFees, bool rollback, std::string beneficiary) {
-        std::deque<std::tuple<uint64_t, uint64_t, uint64_t, std::string>>::reverse_iterator it;
-        if (rollback) {
-            if (epochFees.size() == 0) {
-                feeToPay = 0;
-                return feeToPay;
-            }
-            for (it = catapult::plugins::epochFees.rbegin(); it != catapult::plugins::epochFees.rend(); ++it) {         
-                if (std::get<0>(*it) == blockHeight && std::get<3>(*it) == beneficiary) {
-                    feeToPay = std::get<2>(*it);
-                    *collectedFees = std::get<1>(*it);
-                    break;
-                } else if (std::get<0>(*it) < blockHeight) {
-                    feeToPay = 0;
-                    break;
-                }
-			}
-            return feeToPay;
-        }
-        if (blockHeight % feeRecalculationFrequency == 0) {
-            if (epochFees.size() == 0) {
-                feeToPay = 0;
-                return feeToPay;
-            }
-            for (it = catapult::plugins::epochFees.rbegin(); it != catapult::plugins::epochFees.rend(); ++it) {
-                if (blockHeight - 1 == std::get<0>(*it)) {
-                    *collectedFees = std::get<1>(*it);
-                    break;
-                }
-            }
-            feeToPay = static_cast<unsigned int>(static_cast<double>(*collectedFees) / static_cast<double>(feeRecalculationFrequency) + 0.5);
-        }
-        else if (blockHeight > feeRecalculationFrequency) {
-            for (it = catapult::plugins::epochFees.rbegin(); it != catapult::plugins::epochFees.rend(); ++it) {
-                if (blockHeight - 1 == std::get<0>(*it)) {
-                    *collectedFees = std::get<1>(*it);
-                    feeToPay = std::get<2>(*it);
-                    break;
-                }
-            }
-        }
-        return feeToPay;
+        return 0;
     }
 
     void getAverage(uint64_t blockHeight, double &average30, double &average60, double &average90, 
@@ -254,7 +166,7 @@ namespace catapult { namespace plugins {
         int count = 0;
         uint64_t boundary = pricePeriodBlocks, prevBlock = -1;
         double *averagePtr = &average30;
-        std::deque<std::tuple<uint64_t, uint64_t, uint64_t, double>>::reverse_iterator it;
+        std::deque<std::tuple<uint64_t, uint64_t, uint64_t>>::reverse_iterator it;
         for (it = priceList.rbegin(); it != priceList.rend(); ++it) {
             if (std::get<0>(*it) >= blockHeight || std::get<0>(*it) == prevBlock) {
                 continue;
@@ -305,17 +217,15 @@ namespace catapult { namespace plugins {
     }
 
     void processPriceTransaction(uint64_t blockHeight, uint64_t lowPrice, uint64_t highPrice, bool rollback) {
-        double multiplier = getCoinGenerationMultiplier(blockHeight, false);
         if (rollback) {
-        	std::deque<std::tuple<uint64_t, uint64_t, uint64_t, double>>::reverse_iterator it;
+        	std::deque<std::tuple<uint64_t, uint64_t, uint64_t>>::reverse_iterator it;
 			for (it = priceList.rbegin(); it != priceList.rend(); ++it) {
 				if (std::get<0>(*it) < blockHeight ||
 					(std::get<0>(*it) == blockHeight && 
 					std::get<1>(*it) == lowPrice &&
-					std::get<2>(*it) == highPrice &&
-                    areSame(std::get<3>(*it), multiplier))) {
+					std::get<2>(*it) == highPrice)) {
 					
-					catapult::plugins::removePrice(blockHeight, lowPrice, highPrice, multiplier);
+					catapult::plugins::removePrice(blockHeight, lowPrice, highPrice);
 				}
 				if (std::get<0>(*it) < blockHeight) {
 					return; // no such price found
@@ -324,8 +234,7 @@ namespace catapult { namespace plugins {
 			}
 			return;
 		}
-		catapult::plugins::addPrice(blockHeight, lowPrice, highPrice, multiplier);
-        getCoinGenerationMultiplier(blockHeight + 1, true);
+		catapult::plugins::addPrice(blockHeight, lowPrice, highPrice);
     }
     
     //endregion block_reward
@@ -335,7 +244,7 @@ namespace catapult { namespace plugins {
     void removeOldPrices(uint64_t blockHeight) {
         if (blockHeight < 345600u + entryLifetime) // no old blocks (store some additional blocks in case of a rollback)
             return;
-        std::deque<std::tuple<uint64_t, uint64_t, uint64_t, double>>::iterator it;
+        std::deque<std::tuple<uint64_t, uint64_t, uint64_t>>::iterator it;
         for (it = priceList.begin(); it != priceList.end(); ++it) {
             if (std::get<0>(*it) < blockHeight - 345599u - entryLifetime) { // older than 120 days + some entryLifetime blocks
                 priceList.erase(it);
@@ -348,7 +257,7 @@ namespace catapult { namespace plugins {
         }
     }
 
-    bool addPrice(uint64_t blockHeight, uint64_t lowPrice, uint64_t highPrice, double multiplier, bool addToFile) {
+    bool addPrice(uint64_t blockHeight, uint64_t lowPrice, uint64_t highPrice, bool addToFile) {
         removeOldPrices(blockHeight);
         // must be non-zero
         if (!lowPrice || !highPrice) {
@@ -359,9 +268,6 @@ namespace catapult { namespace plugins {
             return false;
         } else if (lowPrice > highPrice) {
             CATAPULT_LOG(error) << "Error: highPrice can't be lower than lowPrice\n";
-            return false;          
-        } else if (multiplier < 1) {
-            CATAPULT_LOG(error) << "Error: multiplier can't be lower than 1\n";
             return false;
         }
         uint64_t previousTransactionHeight;
@@ -385,38 +291,37 @@ namespace catapult { namespace plugins {
                         break;
                     }
                 }
-                catapult::plugins::priceList.insert(it.base(), {blockHeight, lowPrice, highPrice, multiplier});
+                catapult::plugins::priceList.insert(it.base(), {blockHeight, lowPrice, highPrice});
                 if (addToFile)
-                    addPriceEntryToFile(blockHeight, lowPrice, highPrice, multiplier);
+                    addPriceEntryToFile(blockHeight, lowPrice, highPrice);
                     
                 CATAPULT_LOG(error) << "New price added to the list for block " << blockHeight << " , lowPrice: "
-                    << lowPrice << ", highPrice: " << highPrice << ", multiplier: " << multiplier << "\n";
+                    << lowPrice << ", highPrice: " << highPrice << "\n";
                 return true;
             }
 
         }
-        priceList.push_back({blockHeight, lowPrice, highPrice, multiplier});
+        priceList.push_back({blockHeight, lowPrice, highPrice});
         if (addToFile)
-            addPriceEntryToFile(blockHeight, lowPrice, highPrice, multiplier);
+            addPriceEntryToFile(blockHeight, lowPrice, highPrice);
 
         CATAPULT_LOG(error) << "New price added to the list for block " << blockHeight << " , lowPrice: "
-            << lowPrice << ", highPrice: " << highPrice << ", multiplier: " << multiplier << "\n";
+            << lowPrice << ", highPrice: " << highPrice << "\n";
         return true;
     }
 
-    void removePrice(uint64_t blockHeight, uint64_t lowPrice, uint64_t highPrice, double multiplier) {
+    void removePrice(uint64_t blockHeight, uint64_t lowPrice, uint64_t highPrice) {
         cache::RocksDatabase priceDB(priceSettings);
 
-        std::deque<std::tuple<uint64_t, uint64_t, uint64_t, double>>::reverse_iterator it;
+        std::deque<std::tuple<uint64_t, uint64_t, uint64_t>>::reverse_iterator it;
         for (it = priceList.rbegin(); it != priceList.rend(); ++it) {
             if (blockHeight > std::get<0>(*it))
                 break;
                 
             if (std::get<0>(*it) == blockHeight && std::get<1>(*it) == lowPrice &&
-                std::get<2>(*it) == highPrice && areSame(std::get<3>(*it), multiplier)) {
+                std::get<2>(*it) == highPrice) {
                 CATAPULT_LOG(error) << "Price removed from the list for block " << blockHeight 
-                    << ", lowPrice: " << lowPrice << ", highPrice: " << highPrice << ", multiplier: "
-                    << multiplier << "\n";
+                    << ", lowPrice: " << lowPrice << ", highPrice: " << highPrice << "\n";
                 priceList.erase(std::next(it).base());
                 break;
             }
@@ -425,65 +330,31 @@ namespace catapult { namespace plugins {
         priceDB.flush();
     }
 
-    void addPriceEntryToFile(uint64_t blockHeight, uint64_t lowPrice, uint64_t highPrice, double multiplier) {
+    void addPriceEntryToFile(uint64_t blockHeight, uint64_t lowPrice, uint64_t highPrice) {
         cache::RocksDatabase priceDB(priceSettings);
 
         std::string priceData[PRICE_DATA_SIZE - 1] = {
             std::to_string(lowPrice),
-            std::to_string(highPrice),
-            std::to_string(multiplier)
+            std::to_string(highPrice)
         };        
         for (int i = 0; i < PRICE_DATA_SIZE - 1; ++i) {
             std::size_t priceSize = priceData[i].length();
-            if (i < PRICE_DATA_SIZE - 2) {
-                for (std::size_t j = 0; j < 15 - priceSize; ++j) {
-                    priceData[i] += ' ';
-                }
-            } else {
-                for (std::size_t j = 0; j < 10 - priceSize; ++j) {
-                    priceData[i] += ' ';
-                }
+            for (std::size_t j = 0; j < 20 - priceSize; ++j) {
+                priceData[i] += ' ';
             }
         }
         for (int i = 1; i < PRICE_DATA_SIZE - 1; ++i) {
             priceData[0] += priceData[i];
         }
-
         priceDB.put(0, rocksdb::Slice(std::to_string(blockHeight)), priceData[0]);
         priceDB.flush();
     }
 
     void updatePricesFile() {
-        std::deque<std::tuple<uint64_t, uint64_t, uint64_t, double>>::iterator it;
+        std::deque<std::tuple<uint64_t, uint64_t, uint64_t>>::iterator it;
         for (it = priceList.begin(); it != priceList.end(); ++it) {
-            addPriceEntryToFile(std::get<0>(*it), std::get<1>(*it), std::get<2>(*it), std::get<3>(*it));
+            addPriceEntryToFile(std::get<0>(*it), std::get<1>(*it), std::get<2>(*it));
         }
-    }
-
-    std::string pricesToString() {
-        std::string list = "height:   lowPrice:      highPrice:    multiplier\n";
-        std::deque<std::tuple<uint64_t, uint64_t, uint64_t, double>>::iterator it;
-        std::size_t length = 0;
-        for (it = priceList.begin(); it != priceList.end(); ++it) {
-            list += std::to_string(std::get<0>(*it));
-            length = std::to_string(std::get<0>(*it)).length();
-            for (std::size_t i = 0; i < 10 - length; ++i)
-                list += ' ';
-            list += std::to_string(std::get<1>(*it));
-            length = std::to_string(std::get<1>(*it)).length();
-            for (std::size_t i = 0; i < 15 - length; ++i)
-                list += ' ';
-            list += std::to_string(std::get<2>(*it));
-            length = std::to_string(std::get<2>(*it)).length();
-            for (std::size_t i = 0; i < 15 - length; ++i)
-                list += ' ';
-            list += std::to_string(std::get<3>(*it));
-            length = std::to_string(std::get<3>(*it)).length();
-            for (std::size_t i = 0; i < 10 - length; ++i)
-                list += ' ';
-            list += '\n';
-        }
-        return list;
     }
 
     void loadPricesFromFile(uint64_t blockHeight) {
@@ -504,19 +375,12 @@ namespace catapult { namespace plugins {
                 continue;
             }
             values[0] = result.storage().ToString();
-            values[1] = values[0].substr(15, 15);
-            values[2] = values[0].substr(30, 10);
-            values[0] = values[0].substr(0, 15);
+            values[1] = values[0].substr(20, 20);
+            values[0] = values[0].substr(0, 20);
 
-            addPrice(key, std::stoul(values[0]), std::stoul(values[1]), std::stod(values[2]),
-                false);
+            addPrice(key, std::stoul(values[0]), std::stoul(values[1]), false);
             result.storage().clear();
             key++;
-        }
-        if (values[2] == "") {
-            currentMultiplier = 1;
-        } else {
-            currentMultiplier = std::stod(values[2]);
         }
     }
 

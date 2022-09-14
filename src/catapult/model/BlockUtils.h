@@ -98,6 +98,7 @@ namespace catapult { namespace model {
 			feeToPay = 0;
 			totalSupply = 0;
 			inflation = 0;
+			inflationMultiplier = 1;
 		}
 
 		/// Creates a context with \a blockElement as the previous block.
@@ -111,6 +112,7 @@ namespace catapult { namespace model {
 			feeToPay = blockElement.Block.feeToPay;
 			totalSupply = blockElement.Block.totalSupply;
 			inflation = blockElement.Block.inflation;
+			inflationMultiplier = blockElement.Block.inflationMultiplier;
 		}
 
 		/// Hash of previous block.
@@ -132,6 +134,8 @@ namespace catapult { namespace model {
 		uint64_t totalSupply;
 
 		uint64_t inflation;
+
+		double inflationMultiplier;
 	};
 
 	/// Creates an unsigned Block with \a blockType given \a context, signer public key (\a signerPublicKey) and \a transactions

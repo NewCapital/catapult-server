@@ -76,6 +76,8 @@ namespace catapult { namespace model {
 		uint64_t totalSupply;
 		
 		uint64_t inflation;
+
+		double inflationMultiplier;
 	};
 
 	/// Binary layout for a padded block footer.

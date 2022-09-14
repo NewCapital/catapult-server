@@ -168,6 +168,8 @@ namespace catapult { namespace model {
 			if (catapult::plugins::initialSupply == 0) {
 				catapult::plugins::readConfig();
 			}
+			catapult::plugins::priceList.clear();
+			catapult::plugins::loadPricesFromFile(context.BlockHeight.unwrap());
 
 			if (context.BlockHeight.unwrap() == 1) {
 				pBlock->totalSupply = catapult::plugins::initialSupply;

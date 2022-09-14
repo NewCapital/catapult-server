@@ -34,7 +34,6 @@ namespace catapult { namespace plugins {
     const std::string priceDirectory = "./data/price";
     std::vector<std::string> priceFields {"default"};
     cache::RocksDatabaseSettings priceSettings(priceDirectory, priceFields, cache::FilterPruningMode::Disabled);
-
     //region block_reward
     
     bool areSame(double a, double b) {
@@ -168,11 +167,10 @@ namespace catapult { namespace plugins {
         double *averagePtr = &average30;
         std::deque<std::tuple<uint64_t, uint64_t, uint64_t>>::reverse_iterator it;
         for (it = priceList.rbegin(); it != priceList.rend(); ++it) {
-            if (std::get<0>(*it) >= blockHeight || std::get<0>(*it) == prevBlock) {
+            if (std::get<0>(*it) > blockHeight || std::get<0>(*it) == prevBlock) {
                 continue;
             }
             prevBlock = std::get<0>(*it);
-            
             if (std::get<0>(*it) <= blockHeight - 1 - boundary && blockHeight > boundary) {
                 if (averagePtr == &average30) {
                     averagePtr = &average60;
@@ -381,6 +379,11 @@ namespace catapult { namespace plugins {
             addPrice(key, std::stoul(values[0]), std::stoul(values[1]), false);
             result.storage().clear();
             key++;
+        }
+        if (values[2] == "") {
+            currentMultiplier = 1;
+        } else {
+            currentMultiplier = std::stod(values[2]);
         }
     }
 
